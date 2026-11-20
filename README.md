@@ -5,7 +5,7 @@
 
 <p align="center">
   A native macOS clipboard manager that pastes <em>exactly</em> what you copied.<br>
-  AppKit/SwiftUI shell · Rust storage engine · lives in the menu bar · opens with ⇧⌘V
+  Text · Images · Links tabs · offline smart actions · animated clip logo in the menu bar · opens with ⇧⌘V
 </p>
 
 <p align="center">
@@ -19,6 +19,9 @@
 ---
 
 ## Install
+
+> **This fork** ([Gokulakrishnxn/Clipy](https://github.com/Gokulakrishnxn/Clipy)) adds category tabs, the offline smart assistant and the clip logo.
+> The Homebrew cask and release downloads below still come from upstream Clipper4Mac and don't include these yet. To get them, [build from source](#building-from-source).
 
 **Homebrew** (recommended):
 
@@ -77,15 +80,42 @@ In one sentence: Clipper is a Maccy-style front end on a storage engine designed
 
 ## Features
 
-- **Menu bar item** – template icon (follows light/dark), left-click opens history, right-click gives Open · Pause Recording · Preferences… · About · Quit.
-- **History popup** – search field, one row per item with ⌘1–⌘9 for the first nine, thumbnails for images, swatches for colours, optional source-app icons.
+- **Menu bar item** – the clip logo's paperclip mark (or the full "clip" wordmark), following light/dark. It gives a little bounce whenever you copy or paste. Left-click opens history; right-click gives Open · Pause Recording · Preferences… · About · Quit.
+- **Category tabs** – **All · Text · Images · Links · Files**, each with a live count. Switch with Tab / ⇧Tab or ⌘← / ⌘→; the last tab is remembered.
+- **History popup** – search field, one row per item with ⌘1–⌘9 for the first nine, type icons, thumbnails for images, swatches for colours, how long ago each item was copied, optional source-app icons. Links show the domain in bold and the path in grey; pinned items sit under their own heading.
+- **Smart actions, fully offline** – each clip gets a small label and one-key actions (⌃1–⌃9), worked out on your Mac with simple rules: no AI, no network, no API key. See [Smart assistant](#smart-assistant).
 - **Hover preview** – full content plus *Application · First copy · Last copy · Number of copies · Size · Formats*.
 - **Everything copyable** – text, links, colours, images, files and folders (including videos and any other file type, by path), and app-private formats.
 - **Exact paste** by default; ⌥⏎ pastes plain text when you want to strip formatting; ⇧⏎ copies without pasting.
 - **Pin** items so they survive Clear and never age out.
 - **Configurable shortcuts** – open (default ⇧⌘V), pin (⌥P), delete (⌥⌫) via the standard macOS recorder.
-- **Preferences** – popup position (cursor / status item / active window / centre / last position), menu bar icon, launch at login, paste-vs-copy, history size, what to store, ignored apps, clear on quit.
+- **Preferences** – popup position (cursor / status item / active window / centre / last position), menu bar icon and its animation, launch at login, paste-vs-copy, history size, what to store, ignored apps, clear on quit.
 - **Privacy** – copies flagged concealed or transient by password managers (`org.nspasteboard.*`) are never recorded; add any app to the ignore list; nothing ever leaves your Mac.
+
+## Smart assistant
+
+The bar under the list shows actions for the selected item; press ⌃1–⌃9 or click one. The same actions are in each row's right-click menu under **Smart Actions**.
+A text result is put on the clipboard (and pasted, if "Paste automatically" is on) and is saved as a new history item.
+
+| You copied | Label | Actions |
+| --- | --- | --- |
+| A GitHub / GitLab / Bitbucket URL or `*.git` | Repo | Open · `git clone …` · Markdown link · Copy domain |
+| A URL with `token=`, `api_key=`, `sig=`, … | Token | Open · **Copy without token** |
+| A URL with `utm_*`, `fbclid`, `gclid`, … | Tracked | Open · **Clean link** |
+| `localhost` / an IP address | Local | Open · Markdown link |
+| JSON | JSON | Pretty JSON · Minify JSON |
+| `12*7 + (3-1)^2` | `= 88` | Copy result |
+| An email address | Email | Compose · Copy domain |
+| `#ff8800` | Color | Copy as `rgb()` |
+| An existing file path | Path | Reveal in Finder · Open |
+| `rm -rf`, `curl … \| sh`, `git push --force`, `DROP TABLE`, … | ⚠ warning | — |
+| An API key, GitHub/Slack/AWS token, JWT or private key | Secret (red) | Forget secret |
+| Base64 | Base64 | Base64 decode |
+| Plain text | — | Trim spaces · Join / sort / dedupe lines · UPPERCASE · lowercase · Title Case · snake_case · camelCase · Base64 encode · URL decode |
+| An image | — | Save to Downloads · Copy size |
+| Files | — | Reveal in Finder · Open · Copy path · Copy name |
+
+The rules live in [`SmartDetector.swift`](macos/Sources/Clipper/Smart/SmartDetector.swift). The calculator is a small built-in parser, so pasted text is never run as code.
 
 ## Keyboard reference (popup open)
 
@@ -96,6 +126,8 @@ In one sentence: Clipper is a Maccy-style front end on a storage engine designed
 | ⇧⏎ | Copy only (inverts the above) |
 | ⌥⏎ | Paste without formatting |
 | ⌘1 … ⌘9 | Paste the n-th item |
+| Tab · ⇧Tab · ⌘← ⌘→ | Next / previous category tab |
+| ⌃1 … ⌃9 | Run the n-th smart action for the selection |
 | ⌥P | Pin / unpin |
 | ⌥⌫ | Delete |
 | ⌥⌘⌫ · ⇧⌥⌘⌫ | Clear · Clear all (including pinned) |
@@ -107,7 +139,7 @@ In one sentence: Clipper is a Maccy-style front end on a storage engine designed
 Requirements: macOS 14+, **Xcode 16 or newer** (the full app, not just the Command Line Tools), [Rust](https://rustup.rs).
 
 ```sh
-git clone https://github.com/kkrishnan90/Clipper4Mac && cd Clipper4Mac
+git clone https://github.com/Gokulakrishnxn/Clipy && cd Clipy
 scripts/build-macos.sh --install      # build → /Applications/Clipper.app → launch
 ```
 
@@ -117,6 +149,8 @@ workflow ships), or `scripts/brew-local.sh` to install your local build through 
 
 > **Tip for developers.** macOS ties the Accessibility grant to the code signature, and ad-hoc signatures change every build.
 > Create a self-signed *Code Signing* certificate in Keychain Access (e.g. `Clipper Dev`) and `export CODESIGN_IDENTITY="Clipper Dev"` so the grant survives rebuilds.
+
+`scripts/gen-icons.sh` rebuilds `AppIcon.icns` from `assets/icon.svg`. It uses ImageMagick when installed, and otherwise macOS's own SVG renderer.
 
 ```sh
 cargo test --workspace          # engine + FFI tests (run anywhere, including Linux)
@@ -139,8 +173,11 @@ crates/clipper-core     engine: ingest, history, redb store, blob store, search,
 crates/clipper-ffi      UniFFI façade exported to Swift (static library)
 crates/uniffi-bindgen   the bindings generator binary
 macos/                  SwiftPM package: the app (AppKit + SwiftUI)
+  Sources/Clipper/Smart   offline smart detector (labels + actions)
+  Sources/Clipper/Panel   floating panel, popup positioning, clip logo + menu-bar animation
+assets/                 icon.svg (app icon), clip-mark.svg / clip-wordmark.svg (menu-bar icon sources)
 packaging/homebrew      the cask (mirrored to kkrishnan90/homebrew-clipper4mac on release)
-scripts/                build-macos.sh · brew-local.sh · gen-icons.sh · check-macos-on-linux.sh
+scripts/                build-macos.sh · brew-local.sh · gen-icons.sh · render_icon.swift · check-macos-on-linux.sh
 ```
 
 ## Status
@@ -149,6 +186,8 @@ scripts/                build-macos.sh · brew-local.sh · gen-icons.sh · check
 Please [open an issue](https://github.com/kkrishnan90/Clipper4Mac/issues) with the app you were copying from and the *Formats* line from the preview when something pastes wrong.
 
 ## Acknowledgements
+
+This is a fork of [kkrishnan90/Clipper4Mac](https://github.com/kkrishnan90/Clipper4Mac); the storage engine and app foundation are theirs.
 
 The panel behaviour, keyboard model and overall layout follow [Maccy](https://github.com/p0deje/Maccy) (MIT), the reference for what a macOS clipboard manager should feel like.
 Global shortcuts use [KeyboardShortcuts](https://github.com/sindresorhus/KeyboardShortcuts) by Sindre Sorhus.
