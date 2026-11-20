@@ -3,12 +3,12 @@ name: Release
 # Tag a version to ship it:
 #   git tag v0.2.0 && git push origin v0.2.0
 #
-# Builds a universal (Apple Silicon + Intel) Clipper-<version>.dmg, publishes
-# a GitHub Release, then updates the Homebrew tap (kkrishnan90/homebrew-clipper4mac)
-# so `brew install --cask kkrishnan90/clipper4mac/clipper4mac` picks it up.
+# Builds a universal (Apple Silicon + Intel) Clipy-<version>.dmg, publishes
+# a GitHub Release, then updates the Homebrew tap (Gokulakrishnxn/homebrew-clipy)
+# so `brew install --cask gokulakrishnxn/clipy/clipy` picks it up.
 #
 # Secrets:
-#   HOMEBREW_TAP_TOKEN  – fine-grained PAT with contents:write on homebrew-clipper4mac
+#   HOMEBREW_TAP_TOKEN  – fine-grained PAT with contents:write on homebrew-clipy
 #   Optional Developer ID signing + notarisation (see docs/RELEASING.md):
 #   APPLE_CERTIFICATE (base64 .p12), APPLE_CERTIFICATE_PASSWORD, KEYCHAIN_PASSWORD,
 #   APPLE_SIGNING_IDENTITY ("Developer ID Application: …"),
@@ -97,22 +97,22 @@ jobs:
         uses: softprops/action-gh-release@v2
         if: startsWith(github.ref, 'refs/tags/')
         with:
-          name: "Clipper v${{ steps.meta.outputs.version }}"
-          files: dist/Clipper-${{ steps.meta.outputs.version }}.dmg
+          name: "Clipy v${{ steps.meta.outputs.version }}"
+          files: dist/Clipy-${{ steps.meta.outputs.version }}.dmg
           body: |
             ### Install
             ```sh
-            brew install --cask kkrishnan90/clipper4mac/clipper4mac
+            brew install --cask gokulakrishnxn/clipy/clipy
             ```
-            or download `Clipper-${{ steps.meta.outputs.version }}.dmg` below and drag Clipper to Applications.
-            If the build is not notarized, run `xattr -cr /Applications/Clipper.app` once.
+            or download `Clipy-${{ steps.meta.outputs.version }}.dmg` below and drag Clipy to Applications.
+            If the build is not notarized, run `xattr -cr /Applications/Clipy.app` once.
 
-            Requires macOS 14 Sonoma or newer. Grant Accessibility access when asked so Clipper can paste for you.
+            Requires macOS 14 Sonoma or newer. Grant Accessibility access when asked so Clipy can paste for you.
 
       - name: Upload DMG artifact
         uses: actions/upload-artifact@v4
         with:
-          name: Clipper-dmg
+          name: Clipy-dmg
           path: dist/*.dmg
           if-no-files-found: error
 
@@ -127,29 +127,29 @@ jobs:
       - name: Download DMG
         uses: actions/download-artifact@v4
         with:
-          name: Clipper-dmg
+          name: Clipy-dmg
           path: dmg
 
       - name: Render cask
         run: |
           VERSION="${{ needs.build.outputs.version }}"
-          SHA=$(shasum -a 256 "dmg/Clipper-${VERSION}.dmg" | cut -d' ' -f1)
+          SHA=$(shasum -a 256 "dmg/Clipy-${VERSION}.dmg" | cut -d' ' -f1)
           sed -e "s/^  version \".*\"/  version \"${VERSION}\"/" \
               -e "s/^  sha256 \".*\"/  sha256 \"${SHA}\"/" \
-              packaging/homebrew/Casks/clipper4mac.rb > clipper4mac.rb
-          cat clipper4mac.rb
+              packaging/homebrew/Casks/clipy.rb > clipy.rb
+          cat clipy.rb
 
       - name: Push to tap
         env:
           TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
         run: |
           test -n "$TOKEN" || { echo "HOMEBREW_TAP_TOKEN not set – skipping tap update"; exit 0; }
-          git clone "https://x-access-token:${TOKEN}@github.com/kkrishnan90/homebrew-clipper4mac.git" tap
+          git clone "https://x-access-token:${TOKEN}@github.com/Gokulakrishnxn/homebrew-clipy.git" tap
           mkdir -p tap/Casks
-          cp clipper4mac.rb tap/Casks/clipper4mac.rb
+          cp clipy.rb tap/Casks/clipy.rb
           cd tap
-          git config user.name "clipper-release-bot"
-          git config user.email "clipper-release-bot@users.noreply.github.com"
-          git add Casks/clipper4mac.rb
-          git commit -m "clipper ${{ needs.build.outputs.version }}" || echo "nothing to commit"
+          git config user.name "clipy-release-bot"
+          git config user.email "clipy-release-bot@users.noreply.github.com"
+          git add Casks/clipy.rb
+          git commit -m "clipy ${{ needs.build.outputs.version }}" || echo "nothing to commit"
           git push

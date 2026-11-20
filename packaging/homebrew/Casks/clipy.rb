@@ -1,20 +1,22 @@
-# Homebrew cask for Clipper.
+# Homebrew cask for Clipy.
 #
-# Lives in the tap repo `kkrishnan90/homebrew-clipper4mac` at `Casks/clipper4mac.rb`
+# Lives in the tap repo `Gokulakrishnxn/homebrew-clipy` at `Casks/clipy.rb`
 # (this copy in the app repo is the source of truth; the release workflow
 # pushes it to the tap with the version/sha256 filled in).
 #
-#   brew install --cask kkrishnan90/clipper4mac/clipper4mac   (fully qualified ⇒ trusted on Homebrew ≥ 6)
+#   brew install --cask gokulakrishnxn/clipy/clipy   (fully qualified ⇒ trusted on Homebrew ≥ 6)
 #
-cask "clipper4mac" do
-  version "0.2.0"
+# Always use the fully-qualified name: Homebrew's own catalog has an unrelated
+# cask called "clipy" (the original Clipy app).
+cask "clipy" do
+  version "0.3.0"
   sha256 "REPLACED_BY_RELEASE_WORKFLOW"
 
-  url "https://github.com/kkrishnan90/Clipper4Mac/releases/download/v#{version}/Clipper-#{version}.dmg",
-      verified: "github.com/kkrishnan90/Clipper4Mac/"
-  name "Clipper"
-  desc "Native menu-bar clipboard manager with a Rust storage engine"
-  homepage "https://github.com/kkrishnan90/Clipper4Mac"
+  url "https://github.com/Gokulakrishnxn/Clipy/releases/download/v#{version}/Clipy-#{version}.dmg",
+      verified: "github.com/Gokulakrishnxn/Clipy/"
+  name "Clipy"
+  desc "Menu-bar clipboard manager with category tabs and offline smart actions"
+  homepage "https://github.com/Gokulakrishnxn/Clipy"
 
   livecheck do
     url :url
@@ -24,33 +26,33 @@ cask "clipper4mac" do
   auto_updates false
   depends_on macos: ">= :sonoma"
 
-  app "Clipper.app"
+  app "Clipy.app"
 
   # The DMG is ad-hoc signed (no Apple Developer ID yet), so Gatekeeper would
   # otherwise refuse to open it. Stripping the quarantine attribute is what
   # `xattr -cr` in the README does, automated.
   postflight do
     system_command "/usr/bin/xattr",
-                   args: ["-cr", "#{appdir}/Clipper.app"],
+                   args: ["-cr", "#{appdir}/Clipy.app"],
                    sudo: false
   end
 
-  uninstall quit:       "com.kkrishnan90.clipper",
-            launchctl:  "com.kkrishnan90.clipper"
+  uninstall quit:       "com.gokulakrishnxn.clipy",
+            launchctl:  "com.gokulakrishnxn.clipy"
 
   zap trash: [
-    "~/Library/Application Support/Clipper",
-    "~/Library/Caches/com.kkrishnan90.clipper",
-    "~/Library/HTTPStorages/com.kkrishnan90.clipper",
-    "~/Library/Preferences/com.kkrishnan90.clipper.plist",
-    "~/Library/Saved Application State/com.kkrishnan90.clipper.savedState",
+    "~/Library/Application Support/Clipy",
+    "~/Library/Caches/com.gokulakrishnxn.clipy",
+    "~/Library/HTTPStorages/com.gokulakrishnxn.clipy",
+    "~/Library/Preferences/com.gokulakrishnxn.clipy.plist",
+    "~/Library/Saved Application State/com.gokulakrishnxn.clipy.savedState",
   ]
 
   caveats <<~EOS
-    Clipper lives in the menu bar. Press ⇧⌘V to open it (change it in Preferences).
+    Clipy lives in the menu bar. Press ⇧⌘V to open it (change it in Preferences).
 
-    To let Clipper paste directly into other apps, grant it Accessibility
+    To let Clipy paste directly into other apps, grant it Accessibility
     access the first time it asks:
-      System Settings → Privacy & Security → Accessibility → Clipper
+      System Settings → Privacy & Security → Accessibility → Clipy
   EOS
 end
