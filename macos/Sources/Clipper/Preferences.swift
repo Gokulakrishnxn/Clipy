@@ -1,4 +1,4 @@
-import Foundation
+import AppKit
 import KeyboardShortcuts
 
 /// `UserDefaults` keys. UI/behaviour preferences live here; the storage
@@ -13,6 +13,7 @@ enum PrefKey {
     static let showSearch = "showSearch"
     static let showFooter = "showFooter"
     static let menuIcon = "menuIcon"
+    static let animateMenuIcon = "animateMenuIcon"
     static let ignoredApps = "ignoredApps"
     static let ignoreAllAppsExceptListed = "ignoreAllAppsExceptListed"
     static let clearOnQuit = "clearOnQuit"
@@ -42,7 +43,8 @@ enum PrefKey {
             previewDelayMs: 1500,
             showSearch: true,
             showFooter: true,
-            menuIcon: MenuIcon.paperclip.rawValue,
+            menuIcon: MenuIcon.clip.rawValue,
+            animateMenuIcon: true,
             ignoredApps: [
                 "com.agilebits.onepassword7",
                 "com.1password.1password",
@@ -68,6 +70,10 @@ enum PrefKey {
 /// SF Symbols usable as the status-item image. All are template images so
 /// they follow the menu bar's light/dark appearance automatically.
 enum MenuIcon: String, CaseIterable, Identifiable {
+    /// The "clip" logo's `ip` paperclip mark (drawn in code, animatable).
+    case clip = "clip.mark"
+    /// The full "clip" wordmark.
+    case clipWordmark = "clip.wordmark"
     case paperclip
     case clipboard = "doc.on.clipboard"
     case scissors
@@ -75,8 +81,26 @@ enum MenuIcon: String, CaseIterable, Identifiable {
 
     var id: String { rawValue }
     var symbolName: String { rawValue }
+
+    /// The drawn logo style, or `nil` for the SF Symbol icons.
+    var logoStyle: ClipLogo.Style? {
+        switch self {
+        case .clip: .mark
+        case .clipWordmark: .wordmark
+        default: nil
+        }
+    }
+
+    var image: NSImage? {
+        if let logoStyle { return ClipLogo.image(logoStyle) }
+        let image = NSImage(systemSymbolName: symbolName, accessibilityDescription: "Clipper")
+        image?.isTemplate = true
+        return image
+    }
     var title: String {
         switch self {
+        case .clip: "Clip logo"
+        case .clipWordmark: "Clip wordmark"
         case .paperclip: "Paperclip"
         case .clipboard: "Clipboard"
         case .scissors: "Scissors"

@@ -22,6 +22,8 @@ final class CoreService {
     /// Bumped on every mutation; views observe it to reload.
     private(set) var revision = 0
     private(set) var lastIngested: ItemSummary?
+    /// Called on the main actor after each new clip is stored.
+    @ObservationIgnored var onIngest: (() -> Void)?
 
     nonisolated private let ingestQueue = DispatchQueue(label: "\(CoreService.bundleId).ingest", qos: .utility)
     nonisolated private let log = Logger(subsystem: CoreService.bundleId, category: "core")
@@ -85,6 +87,7 @@ final class CoreService {
                     Task { @MainActor in
                         self.lastIngested = item
                         self.bump()
+                        self.onIngest?()
                     }
                 }
             } catch {
