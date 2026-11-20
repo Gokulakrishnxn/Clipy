@@ -124,12 +124,16 @@ enum SmartDetector {
         let hasSecret = names.contains { secretParams.contains($0) }
         let hasTracking = names.contains { trackingParams.contains($0) || $0.hasPrefix("utm_") }
         let isLocal = host == "localhost" || isIP(host)
-        let isGit = original.hasSuffix(".git")
-            || (["github.com", "gitlab.com", "bitbucket.org"].contains(host) && url.pathComponents.count >= 3)
+        let gitHost = ["github.com", "gitlab.com", "bitbucket.org"].contains(host)
+        let pathParts = url.pathComponents.filter { $0 != "/" }
+        // "Repo" only for the repository itself (owner/name or *.git); deeper
+        // pages (releases, issues, files) still get a git clone action.
+        let isRepoRoot = original.hasSuffix(".git") || (gitHost && pathParts.count == 2)
+        let isGit = isRepoRoot || (gitHost && pathParts.count >= 2)
 
         if hasSecret {
             info.badge = SmartBadge(text: "Token", symbol: "key.fill", tone: .danger)
-        } else if isGit {
+        } else if isRepoRoot {
             info.badge = SmartBadge(text: "Repo", symbol: "chevron.left.forwardslash.chevron.right", tone: .info)
         } else if isLocal {
             info.badge = SmartBadge(text: "Local", symbol: "desktopcomputer", tone: .neutral)
