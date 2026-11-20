@@ -9,7 +9,7 @@
 # Always use the fully-qualified name: Homebrew's own catalog has an unrelated
 # cask called "clipy" (the original Clipy app).
 cask "clipy" do
-  version "0.3.0"
+  version "0.3.1"
   sha256 "REPLACED_BY_RELEASE_WORKFLOW"
 
   url "https://github.com/Gokulakrishnxn/Clipy/releases/download/v#{version}/Clipy-#{version}.dmg",
