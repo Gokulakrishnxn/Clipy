@@ -32,6 +32,16 @@ enum Paster {
         watcher.skipNextChange()
     }
 
+    /// Puts plain text produced by a smart action on the pasteboard. Unlike
+    /// `write`, this is *not* marked as coming from Clipper, so the result is
+    /// recorded as a new history item.
+    @MainActor
+    static func writeString(_ string: String) {
+        let pb = NSPasteboard.general
+        pb.clearContents()
+        pb.setString(string, forType: .string)
+    }
+
     /// True when the app may post keyboard events into other apps.
     static var isTrusted: Bool { AXIsProcessTrusted() }
 

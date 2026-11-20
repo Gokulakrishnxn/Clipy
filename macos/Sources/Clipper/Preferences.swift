@@ -14,6 +14,7 @@ enum PrefKey {
     static let showFooter = "showFooter"
     static let menuIcon = "menuIcon"
     static let animateMenuIcon = "animateMenuIcon"
+    static let selectedCategory = "selectedCategory"
     static let ignoredApps = "ignoredApps"
     static let ignoreAllAppsExceptListed = "ignoreAllAppsExceptListed"
     static let clearOnQuit = "clearOnQuit"
@@ -45,6 +46,7 @@ enum PrefKey {
             showFooter: true,
             menuIcon: MenuIcon.clip.rawValue,
             animateMenuIcon: true,
+            selectedCategory: HistoryCategory.all.rawValue,
             ignoredApps: [
                 "com.agilebits.onepassword7",
                 "com.1password.1password",
