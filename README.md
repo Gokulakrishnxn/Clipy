@@ -86,6 +86,7 @@ In one sentence: Clipy is a Maccy-style front end on a storage engine designed s
 - **Everything copyable** – text, links, colours, images, files and folders (including videos and any other file type, by path), and app-private formats.
 - **Exact paste** by default; ⌥⏎ pastes plain text when you want to strip formatting; ⇧⏎ copies without pasting.
 - **Pin** items so they survive Clear and never age out.
+- **Select several** items with ⌘-click, ⇧-click, ⌘A or the footer's select button, then delete or pin them together. The footer's trash menu clears history, keeping pinned items or including them.
 - **Configurable shortcuts** – open (default ⇧⌘V), pin (⌥P), delete (⌥⌫) via the standard macOS recorder.
 - **Preferences** – popup position (cursor / status item / active window / centre / last position), menu bar icon and its animation, launch at login, paste-vs-copy, history size, what to store, ignored apps, clear on quit.
 - **Privacy** – copies flagged concealed or transient by password managers (`org.nspasteboard.*`) are never recorded; add any app to the ignore list; nothing ever leaves your Mac.
@@ -126,9 +127,12 @@ The rules live in [`SmartDetector.swift`](macos/Sources/Clipper/Smart/SmartDetec
 | ⌘1 … ⌘9 | Paste the n-th item |
 | Tab · ⇧Tab · ⌘← ⌘→ | Next / previous category tab |
 | ⌃1 … ⌃9 | Run the n-th smart action for the selection |
-| ⌥P | Pin / unpin |
-| ⌥⌫ | Delete |
-| ⌥⌘⌫ · ⇧⌥⌘⌫ | Clear · Clear all (including pinned) |
+| ⌘-click · ⇧-click · ⌘A | Select items · select a range · select all |
+| ⌫ (with items selected) | Delete the selected items |
+| space (select mode) | Check / uncheck the highlighted item |
+| ⌥P | Pin / unpin (all selected items, if any) |
+| ⌥⌫ | Delete (all selected items, if any) |
+| ⌥⌘⌫ · ⇧⌥⌘⌫ | Clear (keeps pinned) · Clear all (including pinned); also in the footer's trash menu |
 | ⌘, | Preferences |
 | esc | Clear search, then close |
 
