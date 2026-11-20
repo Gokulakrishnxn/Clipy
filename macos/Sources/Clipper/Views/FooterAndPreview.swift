@@ -6,6 +6,7 @@ import SwiftUI
 /// Shortcuts are unchanged: Clear ⌥⌘⌫ (Clear all ⇧⌥⌘⌫), Preferences ⌘,, Quit ⌘Q.
 struct FooterView: View {
     @Bindable var model: HistoryModel
+    @Environment(\.panelWidth) private var width
 
     var body: some View {
         HStack(spacing: 2) {
@@ -15,7 +16,8 @@ struct FooterView: View {
             Text(summary)
                 .font(.system(size: 11))
                 .foregroundStyle(.secondary)
-            Spacer()
+                .lineLimit(1)
+            Spacer(minLength: 4)
             FooterButton(
                 symbol: "trash",
                 help: model.shiftDown ? "Clear all, including pinned (⇧⌥⌘⌫)" : "Clear unpinned (⌥⌘⌫)",
@@ -25,9 +27,11 @@ struct FooterView: View {
                 model.dismiss?()
                 AppDelegate.shared?.openPreferences()
             }
-            FooterButton(symbol: "info.circle", help: "About") {
-                model.dismiss?()
-                AppDelegate.shared?.showAbout()
+            if width != .narrow {
+                FooterButton(symbol: "info.circle", help: "About") {
+                    model.dismiss?()
+                    AppDelegate.shared?.showAbout()
+                }
             }
             FooterButton(symbol: "power", help: "Quit (⌘Q)") { NSApp.terminate(nil) }
         }
@@ -36,10 +40,9 @@ struct FooterView: View {
     }
 
     private var summary: String {
-        if model.shiftDown { return "⇧ Clear all mode" }
         let n = model.items.count
         let clips = "\(n) \(n == 1 ? "clip" : "clips")"
-        return model.category == .all ? clips : "\(clips) · \(model.category.title)"
+        return model.category == .all || width == .narrow ? clips : "\(clips) · \(model.category.title)"
     }
 }
 

@@ -10,6 +10,16 @@ struct ContentView: View {
     @AppStorage(PrefKey.showFooter) private var showFooter = true
 
     var body: some View {
+        GeometryReader { geo in
+            content.environment(\.panelWidth, PanelWidth(geo.size.width))
+        }
+        .background(VisualEffectView(material: .popover, blendingMode: .behindWindow))
+        .onChange(of: model.core.revision) { _, _ in model.reloadIfStale() }
+        .onChange(of: model.query) { _, _ in model.queryChanged() }
+        .ignoresSafeArea()
+    }
+
+    private var content: some View {
         VStack(spacing: 0) {
             VStack(spacing: 8) {
                 if showSearch {
@@ -28,59 +38,97 @@ struct ContentView: View {
                 FooterView(model: model)
             }
         }
-        .background(VisualEffectView(material: .popover, blendingMode: .behindWindow))
-        .onChange(of: model.core.revision) { _, _ in model.reloadIfStale() }
-        .onChange(of: model.query) { _, _ in model.queryChanged() }
-        .ignoresSafeArea()
+    }
+}
+
+/// Width class of the popup, so every part can drop detail as it narrows.
+enum PanelWidth: Comparable {
+    case narrow   // < 340 pt
+    case compact  // < 440 pt
+    case regular
+
+    init(_ width: CGFloat) {
+        self = width < 340 ? .narrow : (width < 440 ? .compact : .regular)
+    }
+}
+
+private struct PanelWidthKey: EnvironmentKey {
+    static let defaultValue = PanelWidth.regular
+}
+
+extension EnvironmentValues {
+    var panelWidth: PanelWidth {
+        get { self[PanelWidthKey.self] }
+        set { self[PanelWidthKey.self] = newValue }
     }
 }
 
 /// All · Text · Images · Links · Files, with live counts. Tab / ⇧Tab cycle.
+/// Tabs never wrap: as the panel narrows the bar falls back from
+/// icon + title + count, to icon + title, to icon + count, to icon only.
 struct CategoryBar: View {
     @Bindable var model: HistoryModel
-    @Namespace private var pill
+
+    enum Detail { case full, title, count, icon }
 
     var body: some View {
-        HStack(spacing: 2) {
-            ForEach(HistoryCategory.allCases) { cat in
-                let active = model.category == cat
-                let count = model.counts[cat] ?? 0
-                Button {
-                    withAnimation(.snappy(duration: 0.2)) { model.category = cat }
-                } label: {
-                    HStack(spacing: 4) {
-                        Image(systemName: cat.symbol).font(.system(size: 10, weight: .semibold))
-                        Text(cat.title).font(.system(size: 11.5, weight: active ? .semibold : .regular))
-                        if count > 0 {
-                            Text("\(count)")
-                                .font(.system(size: 10, weight: .medium, design: .rounded))
-                                .monospacedDigit()
-                                .foregroundStyle(active ? Color.primary.opacity(0.7) : Color.secondary.opacity(0.8))
-                        }
-                    }
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 4)
-                    .frame(maxWidth: .infinity)
-                    .background {
-                        if active {
-                            RoundedRectangle(cornerRadius: 6, style: .continuous)
-                                .fill(Color(nsColor: .controlBackgroundColor).opacity(0.9))
-                                .shadow(color: .black.opacity(0.12), radius: 1, y: 0.5)
-                                .matchedGeometryEffect(id: "pill", in: pill)
-                        }
-                    }
-                    .foregroundStyle(active ? Color.primary : (count == 0 ? Color.secondary.opacity(0.6) : Color.secondary))
-                    .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
-                .help("\(cat.title) (Tab / ⇧Tab to switch)")
-            }
+        ViewThatFits(in: .horizontal) {
+            bar(.full)
+            bar(.title)
+            bar(.count)
+            bar(.icon)
         }
         .padding(2)
         .background(
             RoundedRectangle(cornerRadius: 8, style: .continuous)
                 .fill(Color(nsColor: .quaternaryLabelColor).opacity(0.35))
         )
+    }
+
+    private func bar(_ detail: Detail) -> some View {
+        HStack(spacing: 2) {
+            ForEach(HistoryCategory.allCases) { cat in
+                tab(cat, detail: detail)
+            }
+        }
+    }
+
+    private func tab(_ cat: HistoryCategory, detail: Detail) -> some View {
+        let active = model.category == cat
+        let count = model.counts[cat] ?? 0
+        return Button {
+            withAnimation(.snappy(duration: 0.18)) { model.category = cat }
+        } label: {
+            HStack(spacing: 4) {
+                Image(systemName: cat.symbol).font(.system(size: 10, weight: .semibold))
+                if detail == .full || detail == .title {
+                    Text(cat.title).font(.system(size: 11.5, weight: active ? .semibold : .regular))
+                }
+                if (detail == .full || detail == .count), count > 0 {
+                    Text("\(count)")
+                        .font(.system(size: 10, weight: .medium, design: .rounded))
+                        .monospacedDigit()
+                        .foregroundStyle(active ? Color.primary.opacity(0.7) : Color.secondary.opacity(0.8))
+                }
+            }
+            .lineLimit(1)
+            .fixedSize()
+            .padding(.horizontal, detail == .icon ? 6 : 8)
+            .padding(.vertical, 4)
+            .frame(maxWidth: .infinity)
+            .background {
+                if active {
+                    RoundedRectangle(cornerRadius: 6, style: .continuous)
+                        .fill(Color(nsColor: .controlBackgroundColor).opacity(0.9))
+                        .shadow(color: .black.opacity(0.12), radius: 1, y: 0.5)
+                }
+            }
+            .foregroundStyle(active ? Color.primary : (count == 0 ? Color.secondary.opacity(0.55) : Color.secondary))
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .help("\(cat.title)\(count > 0 ? " (\(count))" : "") · Tab / ⇧Tab to switch")
+        .accessibilityLabel("\(cat.title), \(count) items")
     }
 }
 
@@ -285,27 +333,34 @@ struct HistoryRow: View {
     let badge: SmartBadge?
     @AppStorage(PrefKey.showApplicationIcons) private var showAppIcons = false
     @AppStorage(PrefKey.imageMaxHeight) private var imageMaxHeight = 40
+    @Environment(\.panelWidth) private var width
 
     var body: some View {
         HStack(spacing: 8) {
             leading
             titleView
+                .layoutPriority(1)
             Spacer(minLength: 4)
-            if let badge { BadgeView(badge: badge, selected: selected) }
+            if let badge { BadgeView(badge: badge, selected: selected, iconOnly: width == .narrow) }
             if item.pinned {
                 Image(systemName: "pin.fill")
                     .font(.system(size: 9))
                     .foregroundStyle(selected ? .white.opacity(0.85) : .secondary)
             }
-            Text(Self.age(item.lastCopiedAt))
-                .font(.system(size: 10.5))
-                .monospacedDigit()
-                .foregroundStyle(selected ? .white.opacity(0.7) : Color.secondary.opacity(0.8))
+            if width != .narrow {
+                Text(Self.age(item.lastCopiedAt))
+                    .font(.system(size: 10.5))
+                    .monospacedDigit()
+                    .lineLimit(1)
+                    .fixedSize()
+                    .foregroundStyle(selected ? .white.opacity(0.7) : Color.secondary.opacity(0.8))
+            }
             if let ordinal {
                 Text("⌘\(ordinal)")
                     .font(.system(size: 11, design: .rounded))
+                    .lineLimit(1)
+                    .fixedSize()
                     .foregroundStyle(selected ? .white.opacity(0.85) : .secondary)
-                    .frame(minWidth: 22, alignment: .trailing)
             }
         }
         .foregroundStyle(selected ? .white : .primary)
@@ -343,12 +398,17 @@ struct HistoryRow: View {
         switch item.kind {
         case .image:
             if let thumbnail {
+                // Fixed tile, image fills and is cropped: no letterbox frame.
+                let h = CGFloat(min(max(imageMaxHeight, 24), width == .narrow ? 40 : 120))
                 Image(nsImage: thumbnail)
                     .resizable()
-                    .aspectRatio(contentMode: .fit)
-                    .frame(maxWidth: 80, maxHeight: CGFloat(imageMaxHeight))
-                    .clipShape(RoundedRectangle(cornerRadius: 4))
-                    .overlay(RoundedRectangle(cornerRadius: 4).stroke(.quaternary))
+                    .aspectRatio(contentMode: .fill)
+                    .frame(width: h * 1.25, height: h)
+                    .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 6, style: .continuous)
+                            .stroke(Color.primary.opacity(0.12), lineWidth: 0.5)
+                    )
             } else {
                 KindTile(symbol: "photo", tint: .purple, selected: selected)
             }
@@ -424,14 +484,18 @@ private struct KindTile: View {
 struct BadgeView: View {
     let badge: SmartBadge
     let selected: Bool
+    var iconOnly = false
 
     var body: some View {
         HStack(spacing: 3) {
             if let symbol = badge.symbol {
                 Image(systemName: symbol).font(.system(size: 8, weight: .bold))
             }
-            Text(badge.text).font(.system(size: 10, weight: .semibold)).lineLimit(1)
+            if !iconOnly || badge.symbol == nil {
+                Text(badge.text).font(.system(size: 10, weight: .semibold)).lineLimit(1)
+            }
         }
+        .help(badge.text)
         .padding(.horizontal, 6)
         .padding(.vertical, 2)
         .foregroundStyle(selected ? Color.white : tint)
@@ -453,6 +517,7 @@ struct BadgeView: View {
 /// Offline assistant strip for the selected item: facts + one-key actions.
 struct SmartActionBar: View {
     @Bindable var model: HistoryModel
+    @Environment(\.panelWidth) private var width
 
     var body: some View {
         if let toast = model.toast {
@@ -469,11 +534,11 @@ struct SmartActionBar: View {
                     VStack(alignment: .leading, spacing: 5) {
                         HStack(spacing: 5) {
                             Image(systemName: "sparkles").font(.system(size: 9, weight: .semibold))
-                            Text("Smart actions").font(.system(size: 10, weight: .semibold))
-                            if let stats = smart.stats {
-                                Text("· \(stats)").font(.system(size: 10)).lineLimit(1)
+                            Text("Smart actions").font(.system(size: 10, weight: .semibold)).fixedSize()
+                            if let stats = smart.stats, width != .narrow {
+                                Text("· \(stats)").font(.system(size: 10)).lineLimit(1).truncationMode(.tail)
                             }
-                            Spacer()
+                            Spacer(minLength: 4)
                             Text("⌃1–\(min(9, smart.actions.count))")
                                 .font(.system(size: 10, design: .rounded))
                                 .opacity(smart.actions.isEmpty ? 0 : 1)
@@ -483,7 +548,7 @@ struct SmartActionBar: View {
                             ScrollView(.horizontal, showsIndicators: false) {
                                 HStack(spacing: 5) {
                                     ForEach(Array(smart.actions.prefix(9).enumerated()), id: \.element.id) { i, action in
-                                        ActionChip(action: action, index: i + 1) { model.perform(action) }
+                                        ActionChip(action: action, index: i + 1, iconOnly: width == .narrow) { model.perform(action) }
                                     }
                                 }
                             }
@@ -508,6 +573,7 @@ struct SmartActionBar: View {
 private struct ActionChip: View {
     let action: SmartAction
     let index: Int
+    var iconOnly = false
     let run: () -> Void
     @State private var hovering = false
 
@@ -515,7 +581,9 @@ private struct ActionChip: View {
         Button(action: run) {
             HStack(spacing: 4) {
                 Image(systemName: action.symbol).font(.system(size: 10, weight: .medium))
-                Text(action.title).font(.system(size: 11)).lineLimit(1)
+                if !iconOnly {
+                    Text(action.title).font(.system(size: 11)).lineLimit(1).fixedSize()
+                }
                 Text("\(index)")
                     .font(.system(size: 9, weight: .semibold, design: .rounded))
                     .foregroundStyle(.secondary)
