@@ -1,6 +1,6 @@
 <h1 align="center">
-  <img src="assets/icon.svg" width="128" alt="Clipper icon"><br>
-  Clipper
+  <img src="assets/icon.svg" width="128" alt="Clipy icon"><br>
+  Clipy
 </h1>
 
 <p align="center">
@@ -9,8 +9,8 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/kkrishnan90/Clipper4Mac/actions/workflows/ci.yml"><img src="https://github.com/kkrishnan90/Clipper4Mac/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
-  <a href="https://github.com/kkrishnan90/Clipper4Mac/releases/latest"><img src="https://img.shields.io/github/v/release/kkrishnan90/Clipper4Mac?label=release" alt="Latest release"></a>
+  <a href="https://github.com/Gokulakrishnxn/Clipy/actions/workflows/ci.yml"><img src="https://github.com/Gokulakrishnxn/Clipy/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+  <a href="https://github.com/Gokulakrishnxn/Clipy/releases/latest"><img src="https://img.shields.io/github/v/release/Gokulakrishnxn/Clipy?label=release" alt="Latest release"></a>
   <img src="https://img.shields.io/badge/macOS-14%2B-black" alt="macOS 14+">
   <img src="https://img.shields.io/badge/arch-arm64%20%7C%20x86__64-blue" alt="Universal">
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-green" alt="MIT"></a>
@@ -20,49 +20,47 @@
 
 ## Install
 
-> **This fork** ([Gokulakrishnxn/Clipy](https://github.com/Gokulakrishnxn/Clipy)) adds category tabs, the offline smart assistant and the clip logo.
-> The Homebrew cask and release downloads below still come from upstream Clipper4Mac and don't include these yet. To get them, [build from source](#building-from-source).
-
 **Homebrew** (recommended):
 
 ```sh
-brew install --cask kkrishnan90/clipper4mac/clipper4mac
+brew install --cask gokulakrishnxn/clipy/clipy
 ```
 
-The fully-qualified name is deliberate: since Homebrew 6, code from a non-official tap must be trusted before it is loaded, and installing by full name trusts just this one cask. Afterwards the short name works — `brew upgrade --cask clipper4mac` to update, `brew uninstall --zap --cask clipper4mac` to remove the app and its history.
+Always use the full name. Since Homebrew 6, code from a non-official tap must be trusted before it is loaded, and installing by full name trusts just this one cask. Homebrew's own catalog also has an unrelated cask called `clipy` (the original Clipy app), so the full name makes sure you get this one.
+Update with `brew upgrade --cask gokulakrishnxn/clipy/clipy`; remove the app and its history with `brew uninstall --zap --cask gokulakrishnxn/clipy/clipy`.
 
 <details>
 <summary>Prefer to tap first?</summary>
 
 ```sh
-brew tap kkrishnan90/clipper4mac
-brew trust --cask kkrishnan90/clipper4mac/clipper4mac   # required on Homebrew ≥ 6
-brew install --cask clipper4mac
+brew tap gokulakrishnxn/clipy
+brew trust --cask gokulakrishnxn/clipy/clipy   # required on Homebrew ≥ 6
+brew install --cask gokulakrishnxn/clipy/clipy
 ```
 </details>
 
-**Direct download:** grab `Clipper-<version>.dmg` from the [latest release](https://github.com/kkrishnan90/Clipper4Mac/releases/latest),
-drag Clipper to Applications, and open it. Requires **macOS 14 Sonoma** or newer; runs natively on Apple Silicon and Intel.
+**Direct download:** grab `Clipy-<version>.dmg` from the [latest release](https://github.com/Gokulakrishnxn/Clipy/releases/latest),
+drag Clipy to Applications, and open it. Requires **macOS 14 Sonoma** or newer; runs natively on Apple Silicon and Intel.
 
 > **Unsigned builds.** Until the app ships with a Developer ID, macOS may say it "cannot be opened".
-> Run `xattr -cr /Applications/Clipper.app` once (the cask does this for you).
+> Run `xattr -cr /Applications/Clipy.app` once (the cask does this for you).
 
-On first paste Clipper asks for **Accessibility** access (System Settings → Privacy & Security → Accessibility).
+On first paste Clipy asks for **Accessibility** access (System Settings → Privacy & Security → Accessibility).
 That permission is what lets it press ⌘V in the app you came from; without it, items are still put on the clipboard and you paste manually.
 
 ## Why another clipboard manager?
 
-| Problem with most OSS clipboard managers | What Clipper does |
+| Problem with most OSS clipboard managers | What Clipy does |
 | --- | --- |
 | Rich text comes back mangled, Markdown loses its formatting, tables become plain text | Stores **every pasteboard flavour** (`public.utf8-plain-text`, `public.html`, `public.rtf`, `com.apple.iWork.*`, …) byte-for-byte and writes them all back. What you paste is what you copied. |
 | SQLite history that eventually corrupts, or memory that grows until the app is restarted | A Rust engine on **redb** (copy-on-write, atomic commits, no WAL) with payloads as immutable **content-addressed files**. Bad rows are dropped, never fatal. Only summaries and small thumbnails stay in memory. |
 | Web-view UIs that don't feel like macOS | A real `NSPanel` with vibrancy, stock SwiftUI controls, the system shortcut recorder and About panel. The same construction as Maccy. |
 
-## Why Clipper, if Maccy exists?
+## Why Clipy, if Maccy exists?
 
-[Maccy](https://github.com/p0deje/Maccy) set the standard for what a macOS clipboard manager should feel like, and Clipper keeps that feel: the same kind of non-activating panel, the same keyboard model, every pasteboard flavour preserved. Where Clipper goes further is underneath — the part you notice only when it fails.
+[Maccy](https://github.com/p0deje/Maccy) set the standard for what a macOS clipboard manager should feel like, and Clipy keeps that feel: the same kind of non-activating panel, the same keyboard model, every pasteboard flavour preserved. Where Clipy goes further is underneath — the part you notice only when it fails.
 
-| | Maccy | Clipper |
+| | Maccy | Clipy |
 | --- | --- | --- |
 | Native panel UI, keyboard-first | ✓ | ✓ |
 | Pastes every pasteboard flavour back exactly | ✓ | ✓ |
@@ -76,7 +74,7 @@ That permission is what lets it press ⌘V in the app you came from; without it,
 | Index size | Grows with payloads | Stays small — the index holds metadata only, so scans, backups and recovery stay fast |
 | License | MIT | MIT |
 
-In one sentence: Clipper is a Maccy-style front end on a storage engine designed so that history cannot corrupt, cannot tear, and cannot crash the app — and that design is unit-tested in isolation from macOS.
+In one sentence: Clipy is a Maccy-style front end on a storage engine designed so that history cannot corrupt, cannot tear, and cannot crash the app — and that design is unit-tested in isolation from macOS.
 
 ## Features
 
@@ -140,7 +138,7 @@ Requirements: macOS 14+, **Xcode 16 or newer** (the full app, not just the Comma
 
 ```sh
 git clone https://github.com/Gokulakrishnxn/Clipy && cd Clipy
-scripts/build-macos.sh --install      # build → /Applications/Clipper.app → launch
+scripts/build-macos.sh --install      # build → /Applications/Clipy.app → launch
 ```
 
 `build-macos.sh` compiles the Rust engine as a static library, generates the Swift bindings with [UniFFI](https://mozilla.github.io/uniffi-rs/),
@@ -148,7 +146,7 @@ runs `swift build`, assembles and signs the bundle. Useful flags: `--debug` (fas
 workflow ships), or `scripts/brew-local.sh` to install your local build through Homebrew via a local tap.
 
 > **Tip for developers.** macOS ties the Accessibility grant to the code signature, and ad-hoc signatures change every build.
-> Create a self-signed *Code Signing* certificate in Keychain Access (e.g. `Clipper Dev`) and `export CODESIGN_IDENTITY="Clipper Dev"` so the grant survives rebuilds.
+> Create a self-signed *Code Signing* certificate in Keychain Access (e.g. `Clipy Dev`) and `export CODESIGN_IDENTITY="Clipy Dev"` so the grant survives rebuilds.
 
 `scripts/gen-icons.sh` rebuilds `AppIcon.icns` from `assets/icon.svg`. It uses ImageMagick when installed, and otherwise macOS's own SVG renderer.
 
@@ -160,7 +158,7 @@ scripts/check-macos-on-linux.sh # cross-check the darwin target from a Linux box
 ## How it works
 
 <p align="center">
-  <img src="docs/img/architecture.png" width="900" alt="Clipper architecture: Swift/AppKit shell talking to the Rust engine over UniFFI; ClipboardWatcher captures every pasteboard flavour, Paster writes them all back and posts ⌘V; clipper-core persists to redb and BLAKE3 blobs">
+  <img src="docs/img/architecture.png" width="900" alt="Clipy architecture: Swift/AppKit shell talking to the Rust engine over UniFFI; ClipboardWatcher captures every pasteboard flavour, Paster writes them all back and posts ⌘V; clipper-core persists to redb and BLAKE3 blobs">
 </p>
 
 Details, including the reliability design and threading model, are in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
@@ -176,22 +174,22 @@ macos/                  SwiftPM package: the app (AppKit + SwiftUI)
   Sources/Clipper/Smart   offline smart detector (labels + actions)
   Sources/Clipper/Panel   floating panel, popup positioning, clip logo + menu-bar animation
 assets/                 icon.svg (app icon), clip-mark.svg / clip-wordmark.svg (menu-bar icon sources)
-packaging/homebrew      the cask (mirrored to kkrishnan90/homebrew-clipper4mac on release)
+packaging/homebrew      the cask (mirrored to Gokulakrishnxn/homebrew-clipy on release)
 scripts/                build-macos.sh · brew-local.sh · gen-icons.sh · render_icon.swift · check-macos-on-linux.sh
 ```
 
 ## Status
 
 `0.2.x` — the first native builds. The engine has a full test suite; the app is young and has had limited real-world use.
-Please [open an issue](https://github.com/kkrishnan90/Clipper4Mac/issues) with the app you were copying from and the *Formats* line from the preview when something pastes wrong.
+Please [open an issue](https://github.com/Gokulakrishnxn/Clipy/issues) with the app you were copying from and the *Formats* line from the preview when something pastes wrong.
 
 ## Acknowledgements
 
-This is a fork of [kkrishnan90/Clipper4Mac](https://github.com/kkrishnan90/Clipper4Mac); the storage engine and app foundation are theirs.
+Clipy is a fork of [kkrishnan90/Clipper4Mac](https://github.com/kkrishnan90/Clipper4Mac), which provides the storage engine and the app's foundation.
 
 The panel behaviour, keyboard model and overall layout follow [Maccy](https://github.com/p0deje/Maccy) (MIT), the reference for what a macOS clipboard manager should feel like.
 Global shortcuts use [KeyboardShortcuts](https://github.com/sindresorhus/KeyboardShortcuts) by Sindre Sorhus.
 
 ## License
 
-Copyright © 2026 kkrishnan90. Released under the [MIT License](LICENSE) — free for personal and commercial use, modification and redistribution.
+Copyright © 2026 Gokulakrishnan, and © 2026 kkrishnan90 for the original Clipper4Mac code. Released under the [MIT License](LICENSE) — free for personal and commercial use, modification and redistribution.
