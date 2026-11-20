@@ -219,11 +219,12 @@ struct HistoryListView: View {
             ordinal: index < 9 ? index + 1 : nil,
             selected: item.id == model.selectedId,
             thumbnail: item.hasThumbnail ? model.core.thumbnail(item.id) : nil,
-            badge: smart.badge
+            badge: smart.badge,
+            marked: model.showsCheckboxes ? model.marked.contains(item.id) : nil
         )
         .id(item.id)
         .contentShape(Rectangle())
-        .onTapGesture { model.activate(item.id, modifiers: NSApp.currentEvent?.modifierFlags ?? []) }
+        .onTapGesture { model.click(item.id, modifiers: NSApp.currentEvent?.modifierFlags ?? []) }
         .onHover { inside in
             if inside {
                 model.selectedId = item.id
@@ -251,8 +252,17 @@ struct HistoryListView: View {
                 }
             }
             Divider()
+            Button(model.marked.contains(item.id) ? "Deselect" : "Select") {
+                model.selecting = true
+                model.toggleMark(item.id)
+            }
+            Button("Select All") { model.markAll() }
+            Divider()
             Button(item.pinned ? "Unpin" : "Pin") { model.togglePin(item.id) }
             Button("Delete", role: .destructive) { model.delete(item.id) }
+            if !model.marked.isEmpty {
+                Button("Delete \(model.marked.count) Selected…", role: .destructive) { model.deleteMarked() }
+            }
         }
     }
 
@@ -331,12 +341,20 @@ struct HistoryRow: View {
     let selected: Bool
     let thumbnail: NSImage?
     let badge: SmartBadge?
+    /// `nil` = no checkbox; otherwise whether this row is checked.
+    var marked: Bool? = nil
     @AppStorage(PrefKey.showApplicationIcons) private var showAppIcons = false
     @AppStorage(PrefKey.imageMaxHeight) private var imageMaxHeight = 40
     @Environment(\.panelWidth) private var width
 
     var body: some View {
         HStack(spacing: 8) {
+            if let marked {
+                Image(systemName: marked ? "checkmark.circle.fill" : "circle")
+                    .font(.system(size: 15))
+                    .foregroundStyle(selected ? Color.white : (marked ? Color.accentColor : Color.secondary.opacity(0.6)))
+                    .transition(.scale.combined(with: .opacity))
+            }
             leading
             titleView
                 .layoutPriority(1)
@@ -369,10 +387,11 @@ struct HistoryRow: View {
         .padding(.vertical, item.kind == .image ? 3 : 0)
         .background(
             RoundedRectangle(cornerRadius: 7, style: .continuous)
-                .fill(selected ? Color.accentColor : .clear)
+                .fill(selected ? Color.accentColor : (marked == true ? Color.accentColor.opacity(0.16) : .clear))
                 .padding(.horizontal, 5)
         )
         .animation(.easeOut(duration: 0.08), value: selected)
+        .animation(.easeOut(duration: 0.12), value: marked)
     }
 
     @ViewBuilder
@@ -520,7 +539,9 @@ struct SmartActionBar: View {
     @Environment(\.panelWidth) private var width
 
     var body: some View {
-        if let toast = model.toast {
+        if model.showsCheckboxes {
+            SelectionBar(model: model)
+        } else if let toast = model.toast {
             bar {
                 Label(toast, systemImage: "checkmark.circle.fill")
                     .font(.system(size: 11, weight: .medium))
@@ -567,6 +588,69 @@ struct SmartActionBar: View {
                 .padding(.vertical, 7)
         }
         .background(Color(nsColor: .quaternaryLabelColor).opacity(0.12))
+    }
+}
+
+/// Shown instead of smart actions while items are checked.
+struct SelectionBar: View {
+    @Bindable var model: HistoryModel
+    @Environment(\.panelWidth) private var width
+
+    var body: some View {
+        let n = model.marked.count
+        let iconOnly = width == .narrow
+        VStack(spacing: 0) {
+            Divider()
+            HStack(spacing: 6) {
+                Text(n == 0 ? "Select items" : "\(n) selected")
+                    .font(.system(size: 11, weight: .semibold))
+                    .lineLimit(1)
+                    .fixedSize()
+                Spacer(minLength: 4)
+                BarButton(title: "All", symbol: "checklist", help: "Select all (⌘A)", iconOnly: iconOnly) { model.markAll() }
+                BarButton(title: "Pin", symbol: "pin", help: "Pin / unpin selected (⌥P)", iconOnly: iconOnly) { model.togglePinMarked() }
+                    .disabled(n == 0)
+                BarButton(title: "Delete", symbol: "trash", help: "Delete selected (⌫)", tint: .red, iconOnly: iconOnly) { model.deleteMarked() }
+                    .disabled(n == 0)
+                BarButton(title: "Done", symbol: "xmark", help: "Stop selecting (esc)", iconOnly: iconOnly) { model.clearMarks() }
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 7)
+        }
+        .background(Color.accentColor.opacity(0.08))
+    }
+}
+
+private struct BarButton: View {
+    let title: String
+    let symbol: String
+    let help: String
+    var tint: Color? = nil
+    var iconOnly = false
+    let action: () -> Void
+    @Environment(\.isEnabled) private var enabled
+    @State private var hovering = false
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 4) {
+                Image(systemName: symbol).font(.system(size: 10, weight: .medium))
+                if !iconOnly { Text(title).font(.system(size: 11)).fixedSize() }
+            }
+            .foregroundStyle(tint ?? .primary)
+            .padding(.horizontal, 7)
+            .padding(.vertical, 4)
+            .background(
+                RoundedRectangle(cornerRadius: 6, style: .continuous)
+                    .fill(hovering && enabled ? (tint ?? .accentColor).opacity(0.16) : Color(nsColor: .controlBackgroundColor).opacity(0.7))
+            )
+            .overlay(RoundedRectangle(cornerRadius: 6, style: .continuous).stroke(.quaternary, lineWidth: 0.5))
+            .opacity(enabled ? 1 : 0.4)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .onHover { hovering = $0 }
+        .help(help)
     }
 }
 

@@ -19,10 +19,25 @@ struct FooterView: View {
                 .lineLimit(1)
             Spacer(minLength: 4)
             FooterButton(
-                symbol: "trash",
-                help: model.shiftDown ? "Clear all, including pinned (⇧⌥⌘⌫)" : "Clear unpinned (⌥⌘⌫)",
-                tint: model.shiftDown ? .red : nil
-            ) { model.clear(all: model.shiftDown) }
+                symbol: model.selecting ? "checkmark.circle.fill" : "checkmark.circle",
+                help: model.selecting ? "Stop selecting (esc)" : "Select items to delete or pin (⌘A selects all)",
+                tint: model.selecting ? .accentColor : nil
+            ) {
+                if model.selecting { model.clearMarks() } else { model.selecting = true }
+            }
+            Menu {
+                Button("Clear History (Keep Pinned)…  ⌥⌘⌫") { model.clear(all: false) }
+                Button("Clear All, Including Pinned…  ⇧⌥⌘⌫", role: .destructive) { model.clear(all: true) }
+            } label: {
+                Image(systemName: "trash")
+                    .font(.system(size: 12))
+                    .foregroundStyle(model.shiftDown ? Color.red : Color.secondary)
+                    .frame(width: 26, height: 22)
+            }
+            .menuStyle(.borderlessButton)
+            .menuIndicator(.hidden)
+            .fixedSize()
+            .help("Clear history")
             FooterButton(symbol: "gearshape", help: "Preferences… (⌘,)") {
                 model.dismiss?()
                 AppDelegate.shared?.openPreferences()

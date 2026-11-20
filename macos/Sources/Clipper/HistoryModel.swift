@@ -103,6 +103,15 @@ final class HistoryModel {
     }
     /// Item count per tab for the current query.
     private(set) var counts: [HistoryCategory: Int] = [:]
+    /// Items checked for a bulk action (⌘-click, ⇧-click, ⌘A, select mode).
+    var marked: Set<UInt64> = []
+    /// Select mode: rows show checkboxes and a click toggles instead of pasting.
+    var selecting = false {
+        didSet { if !selecting { marked.removeAll() } }
+    }
+    /// Where a ⇧-click range starts.
+    @ObservationIgnored private var markAnchor: UInt64?
+
     /// Brief confirmation shown in the action bar ("Copied clean link").
     var toast: String?
 
@@ -131,6 +140,8 @@ final class HistoryModel {
             items = everything
         }
         smartCache.removeAll(keepingCapacity: true)
+        let visible = Set(items.map(\.id))
+        marked.formIntersection(visible)
         observedRevision = core.revision
         if keepSelection, let previous, items.contains(where: { $0.id == previous }) {
             selectedId = previous
@@ -272,6 +283,85 @@ final class HistoryModel {
         return true
     }
 
+    // MARK: Multi-select
+
+    var showsCheckboxes: Bool { selecting || !marked.isEmpty }
+
+    /// Row click: ⌘ toggles, ⇧ extends a range (once something is marked),
+    /// in select mode a plain click toggles; otherwise paste as before.
+    func click(_ id: UInt64, modifiers: NSEvent.ModifierFlags) {
+        let flags = modifiers.intersection(.deviceIndependentFlagsMask)
+        if flags.contains(.command) {
+            toggleMark(id)
+        } else if flags.contains(.shift), showsCheckboxes {
+            markRange(to: id)
+        } else if selecting {
+            toggleMark(id)
+        } else {
+            activate(id, modifiers: flags)
+        }
+    }
+
+    func toggleMark(_ id: UInt64) {
+        if marked.contains(id) { marked.remove(id) } else { marked.insert(id) }
+        markAnchor = id
+        selectedId = id
+    }
+
+    func markRange(to id: UInt64) {
+        let anchor = markAnchor ?? selectedId ?? id
+        guard let a = items.firstIndex(where: { $0.id == anchor }),
+              let b = items.firstIndex(where: { $0.id == id }) else { return toggleMark(id) }
+        for item in items[min(a, b)...max(a, b)] { marked.insert(item.id) }
+        selectedId = id
+    }
+
+    func markAll() {
+        selecting = true
+        marked = Set(items.map(\.id))
+    }
+
+    func clearMarks() {
+        marked.removeAll()
+        selecting = false
+        markAnchor = nil
+    }
+
+    /// Deletes the checked items (confirming when there is more than one).
+    func deleteMarked() {
+        let ids = items.map(\.id).filter { marked.contains($0) }
+        guard !ids.isEmpty else { return }
+        if ids.count > 1 {
+            let pinned = items.filter { marked.contains($0.id) && $0.pinned }.count
+            let alert = NSAlert()
+            alert.messageText = "Delete \(ids.count) items?"
+            alert.informativeText = pinned > 0
+                ? "\(pinned) of them \(pinned == 1 ? "is" : "are") pinned. This cannot be undone."
+                : "This cannot be undone."
+            alert.alertStyle = .warning
+            alert.addButton(withTitle: "Delete")
+            alert.addButton(withTitle: "Cancel")
+            NSApp.activate(ignoringOtherApps: true)
+            guard alert.runModal() == .alertFirstButtonReturn else { return }
+        }
+        let firstIdx = items.firstIndex { marked.contains($0.id) } ?? 0
+        for id in ids { core.delete(id) }
+        clearMarks()
+        reload(keepSelection: false)
+        if !items.isEmpty { selectedId = items[min(firstIdx, items.count - 1)].id }
+        flash("Deleted \(ids.count) \(ids.count == 1 ? "item" : "items")")
+    }
+
+    /// Pins all checked items, or unpins them if they are all pinned already.
+    func togglePinMarked() {
+        let chosen = items.filter { marked.contains($0.id) }
+        guard !chosen.isEmpty else { return }
+        let pin = !chosen.allSatisfy(\.pinned)
+        for item in chosen where item.pinned != pin { core.setPinned(item.id, pin) }
+        reload()
+        flash(pin ? "Pinned \(chosen.count)" : "Unpinned \(chosen.count)")
+    }
+
     // MARK: Actions
 
     /// Enter / click: copy back and (by default) paste into the previous app.
@@ -350,10 +440,32 @@ final class HistoryModel {
         let flags = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
         let cmd = flags.contains(.command)
 
+        // Bulk keys while items are checked: ⌫ / ⌦ delete them, esc unchecks.
+        if !marked.isEmpty {
+            if event.keyCode == 51 || event.keyCode == 117, flags.subtracting([.option, .function]).isEmpty, query.isEmpty || flags.contains(.option) {
+                deleteMarked(); return true
+            }
+        }
+        if event.keyCode == 53, showsCheckboxes { clearMarks(); return true }
+        // ⌘A: select every visible item (when the search field is empty).
+        if cmd, event.charactersIgnoringModifiers == "a", query.isEmpty {
+            markAll(); return true
+        }
+        // Space toggles the highlighted row in select mode.
+        if selecting, query.isEmpty, event.keyCode == 49, let id = selectedId {
+            toggleMark(id); return true
+        }
+
         // Pin / delete shortcuts are user-configurable (Preferences › General).
         if let shortcut = KeyboardShortcuts.Shortcut(event: event) {
-            if shortcut == KeyboardShortcuts.getShortcut(for: .pin) { togglePin(); return true }
-            if shortcut == KeyboardShortcuts.getShortcut(for: .delete) { delete(); return true }
+            if shortcut == KeyboardShortcuts.getShortcut(for: .pin) {
+                if marked.isEmpty { togglePin() } else { togglePinMarked() }
+                return true
+            }
+            if shortcut == KeyboardShortcuts.getShortcut(for: .delete) {
+                if marked.isEmpty { delete() } else { deleteMarked() }
+                return true
+            }
         }
 
         // ⌃1…⌃9 run the selected item's smart actions.
