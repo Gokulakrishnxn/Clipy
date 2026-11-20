@@ -3,7 +3,7 @@ resolver = "2"
 members = ["crates/clipper-core", "crates/clipper-ffi", "crates/uniffi-bindgen"]
 
 [workspace.package]
-version = "0.3.1"
+version = "0.3.2"
 edition = "2021"
 license = "MIT"
 authors = ["Gokulakrishnan", "Krishnan <k.krishnan.90@gmail.com>"]
