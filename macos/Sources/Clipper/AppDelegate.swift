@@ -31,7 +31,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         if let error = core.startupError {
             let alert = NSAlert()
-            alert.messageText = "Clipper could not open its history"
+            alert.messageText = "Clipy could not open its history"
             alert.informativeText = error
             alert.runModal()
         }
@@ -74,7 +74,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             button.target = self
             button.action = #selector(statusItemClicked(_:))
             button.sendAction(on: [.leftMouseUp, .rightMouseUp])
-            button.toolTip = "Clipper"
+            button.toolTip = "Clipy"
         }
     }
 
@@ -111,7 +111,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// Right-click on the icon: the standard small menu.
     private func showStatusMenu() {
         let menu = NSMenu()
-        menu.addItem(withTitle: "Open Clipper", action: #selector(openFromMenu), keyEquivalent: "")
+        menu.addItem(withTitle: "Open Clipy", action: #selector(openFromMenu), keyEquivalent: "")
         menu.addItem(.separator())
         let pause = NSMenuItem(
             title: watcher.isPaused ? "Resume Recording" : "Pause Recording",
@@ -119,9 +119,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         )
         menu.addItem(pause)
         menu.addItem(withTitle: "Preferences…", action: #selector(openPreferencesFromMenu), keyEquivalent: ",")
-        menu.addItem(withTitle: "About Clipper", action: #selector(showAboutFromMenu), keyEquivalent: "")
+        menu.addItem(withTitle: "About Clipy", action: #selector(showAboutFromMenu), keyEquivalent: "")
         menu.addItem(.separator())
-        menu.addItem(withTitle: "Quit Clipper", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
+        menu.addItem(withTitle: "Quit Clipy", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
         for item in menu.items where item.target == nil { item.target = self }
         statusItem?.menu = menu
         statusItem?.button?.performClick(nil)
@@ -212,7 +212,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         if settingsWindowController == nil {
             let hosting = NSHostingController(rootView: SettingsView(core: core))
             let window = NSWindow(contentViewController: hosting)
-            window.title = "Clipper Preferences"
+            window.title = "Clipy Preferences"
             window.styleMask = [.titled, .closable]
             window.isReleasedWhenClosed = false
             window.center()
@@ -226,7 +226,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func showAbout() {
         NSApp.activate(ignoringOtherApps: true)
         NSApp.orderFrontStandardAboutPanel(options: [
-            .applicationName: "Clipper",
+            .applicationName: "Clipy",
             .credits: NSAttributedString(
                 string: "Native clipboard history for macOS.\nEngine: clipper-core \(engineVersion()) (Rust).",
                 attributes: [.font: NSFont.systemFont(ofSize: 11)]

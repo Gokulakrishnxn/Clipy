@@ -58,7 +58,7 @@ enum ClipLogo {
             return true
         }
         img.isTemplate = true
-        img.accessibilityDescription = "Clipper"
+        img.accessibilityDescription = "Clipy"
         return img
     }
 

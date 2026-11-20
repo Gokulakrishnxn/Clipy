@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
-# Builds Clipper.app (and optionally a .dmg) on macOS.
+# Builds Clipy.app (and optionally a .dmg) on macOS.
 #
-#   scripts/build-macos.sh                  # release, native arch → dist/Clipper.app
+#   scripts/build-macos.sh                  # release, native arch → dist/Clipy.app
 #   scripts/build-macos.sh --universal      # arm64 + x86_64 (slower)
-#   scripts/build-macos.sh --dmg            # …plus dist/Clipper-<version>.dmg
+#   scripts/build-macos.sh --dmg            # …plus dist/Clipy-<version>.dmg
 #   scripts/build-macos.sh --debug          # swift build -c debug (fast iteration)
 #   scripts/build-macos.sh --install        # copy into /Applications and launch
 #
@@ -80,10 +80,10 @@ swift build -c "$CONFIG" ${SWIFT_ARCH_FLAGS[@]+"${SWIFT_ARCH_FLAGS[@]}"}
 BIN_DIR=$(swift build -c "$CONFIG" ${SWIFT_ARCH_FLAGS[@]+"${SWIFT_ARCH_FLAGS[@]}"} --show-bin-path)
 popd >/dev/null
 
-echo "▸ assembling Clipper.app"
-APP=dist/Clipper.app
+echo "▸ assembling Clipy.app"
+APP=dist/Clipy.app
 rm -rf dist && mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
-cp "$BIN_DIR/Clipper" "$APP/Contents/MacOS/Clipper"
+cp "$BIN_DIR/Clipper" "$APP/Contents/MacOS/Clipy"
 # SwiftPM resource bundles (KeyboardShortcuts localisations) must sit next to
 # the executable's Resources or Bundle.module traps at runtime.
 find "$BIN_DIR" -maxdepth 1 -name '*.bundle' -exec cp -R {} "$APP/Contents/Resources/" \;
@@ -102,14 +102,14 @@ find "$APP/Contents/Resources" -name '*.bundle' -exec codesign --force --options
 codesign --force --options runtime --entitlements macos/Resources/Clipper.entitlements -s "$IDENTITY" "$APP"
 codesign --verify --deep --strict "$APP"
 
-echo "✓ $APP  (v$VERSION, $(lipo -archs "$APP/Contents/MacOS/Clipper"))"
+echo "✓ $APP  (v$VERSION, $(lipo -archs "$APP/Contents/MacOS/Clipy"))"
 
 if [[ $DMG == 1 ]]; then
-  DMG_PATH="dist/Clipper-$VERSION.dmg"
+  DMG_PATH="dist/Clipy-$VERSION.dmg"
   STAGE=$(mktemp -d)
   cp -R "$APP" "$STAGE/"
   ln -s /Applications "$STAGE/Applications"
-  hdiutil create -quiet -volname "Clipper" -srcfolder "$STAGE" -ov -format UDZO "$DMG_PATH"
+  hdiutil create -quiet -volname "Clipy" -srcfolder "$STAGE" -ov -format UDZO "$DMG_PATH"
   rm -rf "$STAGE"
   if [[ $IDENTITY != "-" ]]; then
     codesign --force -s "$IDENTITY" "$DMG_PATH"
@@ -125,12 +125,12 @@ fi
 
 if [[ $INSTALL == 1 ]]; then
   echo "▸ installing to /Applications"
-  osascript -e 'tell application "Clipper" to quit' 2>/dev/null || true
-  rm -rf /Applications/Clipper.app
-  cp -R "$APP" /Applications/Clipper.app
-  [[ $IDENTITY == "-" ]] && xattr -cr /Applications/Clipper.app
-  open /Applications/Clipper.app
-  echo "✓ Clipper is in your menu bar. Press ⇧⌘V."
+  osascript -e 'tell application "Clipy" to quit' 2>/dev/null || true
+  rm -rf /Applications/Clipy.app
+  cp -R "$APP" /Applications/Clipy.app
+  [[ $IDENTITY == "-" ]] && xattr -cr /Applications/Clipy.app
+  open /Applications/Clipy.app
+  echo "✓ Clipy is in your menu bar. Press ⇧⌘V."
   if [[ $IDENTITY == "-" ]]; then
     echo "  Note: ad-hoc signatures change on every build, so macOS will ask for the"
     echo "  Accessibility permission again after each reinstall. Use a stable"

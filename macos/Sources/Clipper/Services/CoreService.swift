@@ -11,7 +11,7 @@ import os
 @MainActor
 @Observable
 final class CoreService {
-    nonisolated static let bundleId = "com.kkrishnan90.clipper"
+    nonisolated static let bundleId = "com.gokulakrishnxn.clipy"
     /// Password managers that predate the nspasteboard.org markers.
     static let knownSecretApps: Set<String> = [
         "com.agilebits.onepassword7", "com.1password.1password", "com.apple.keychainaccess",
@@ -30,7 +30,7 @@ final class CoreService {
 
     static let dataDirectory: URL = {
         let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
-        return base.appendingPathComponent("Clipper", isDirectory: true)
+        return base.appendingPathComponent("Clipy", isDirectory: true)
     }()
 
     init() {

@@ -95,7 +95,7 @@ enum MenuIcon: String, CaseIterable, Identifiable {
 
     var image: NSImage? {
         if let logoStyle { return ClipLogo.image(logoStyle) }
-        let image = NSImage(systemSymbolName: symbolName, accessibilityDescription: "Clipper")
+        let image = NSImage(systemSymbolName: symbolName, accessibilityDescription: "Clipy")
         image?.isTemplate = true
         return image
     }

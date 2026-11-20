@@ -13,7 +13,7 @@ import os
 final class ClipboardWatcher {
     /// Marker we add when *we* write the pasteboard, so our own paste is not
     /// re-ingested as a new copy.
-    static let fromClipperType = NSPasteboard.PasteboardType("com.kkrishnan90.clipper.from-clipper")
+    static let fromClipperType = NSPasteboard.PasteboardType("com.gokulakrishnxn.clipy.from-clipy")
     /// Cross-app conventions from http://nspasteboard.org
     static let concealedType = NSPasteboard.PasteboardType("org.nspasteboard.ConcealedType")
     static let transientType = NSPasteboard.PasteboardType("org.nspasteboard.TransientType")
@@ -33,7 +33,7 @@ final class ClipboardWatcher {
     private var timer: Timer?
     private var lastChangeCount: Int
     private var ignoredUntilChangeCount = -1
-    private let log = Logger(subsystem: "com.kkrishnan90.clipper", category: "watcher")
+    private let log = Logger(subsystem: "com.gokulakrishnxn.clipy", category: "watcher")
 
     var isPaused = false {
         didSet { if !isPaused { lastChangeCount = pasteboard.changeCount } }

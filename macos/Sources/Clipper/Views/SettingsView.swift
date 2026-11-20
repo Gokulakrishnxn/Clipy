@@ -32,7 +32,7 @@ private struct GeneralTab: View {
     var body: some View {
         Form {
             Section {
-                KeyboardShortcuts.Recorder("Open Clipper:", name: .popup)
+                KeyboardShortcuts.Recorder("Open Clipy:", name: .popup)
                 KeyboardShortcuts.Recorder("Pin item:", name: .pin)
                 KeyboardShortcuts.Recorder("Delete item:", name: .delete)
             }
@@ -46,7 +46,7 @@ private struct GeneralTab: View {
                 Text("Hold ⇧ while selecting to copy without pasting.")
                     .font(.caption).foregroundStyle(.secondary)
                 Toggle("Paste without formatting by default", isOn: $pastePlainByDefault)
-                Text("Hold ⌥ while selecting to invert. Clipper always stores every format, so nothing is lost either way.")
+                Text("Hold ⌥ while selecting to invert. Clipy always stores every format, so nothing is lost either way.")
                     .font(.caption).foregroundStyle(.secondary)
                 if pasteOnSelect, !accessibilityGranted {
                     HStack {
@@ -166,7 +166,7 @@ private struct StorageTab: View {
                 }
             }
             Section {
-                Text("Clipper never uses SQLite. The index is a copy-on-write redb database; every payload is a content-addressed file written with write-tmp → fsync → rename, so a crash can't leave a half-written record.")
+                Text("Clipy never uses SQLite. The index is a copy-on-write redb database; every payload is a content-addressed file written with write-tmp → fsync → rename, so a crash can't leave a half-written record.")
                     .font(.caption).foregroundStyle(.secondary)
             }
         }

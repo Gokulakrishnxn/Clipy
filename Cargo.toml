@@ -3,11 +3,11 @@ resolver = "2"
 members = ["crates/clipper-core", "crates/clipper-ffi", "crates/uniffi-bindgen"]
 
 [workspace.package]
-version = "0.2.0"
+version = "0.3.0"
 edition = "2021"
 license = "MIT"
-authors = ["Krishnan <k.krishnan.90@gmail.com>"]
-repository = "https://github.com/kkrishnan90/Clipper4Mac"
+authors = ["Gokulakrishnan", "Krishnan <k.krishnan.90@gmail.com>"]
+repository = "https://github.com/Gokulakrishnxn/Clipy"
 rust-version = "1.80"
 
 [workspace.dependencies]

@@ -37,11 +37,11 @@ jobs:
         with:
           path: macos/.build
           key: swiftpm-${{ runner.os }}-${{ hashFiles('macos/Package.swift') }}
-      - name: Build Clipper.app (debug, native arch)
+      - name: Build Clipy.app (debug, native arch)
         run: scripts/build-macos.sh --debug
       - name: Smoke-test bundle
         run: |
-          test -x dist/Clipper.app/Contents/MacOS/Clipper
-          plutil -lint dist/Clipper.app/Contents/Info.plist
-          codesign --verify --deep --strict dist/Clipper.app
-          ls dist/Clipper.app/Contents/Resources
+          test -x dist/Clipy.app/Contents/MacOS/Clipy
+          plutil -lint dist/Clipy.app/Contents/Info.plist
+          codesign --verify --deep --strict dist/Clipy.app
+          ls dist/Clipy.app/Contents/Resources

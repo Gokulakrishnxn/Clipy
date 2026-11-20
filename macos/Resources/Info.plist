@@ -5,17 +5,17 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>en</string>
 	<key>CFBundleDisplayName</key>
-	<string>Clipper</string>
+	<string>Clipy</string>
 	<key>CFBundleExecutable</key>
-	<string>Clipper</string>
+	<string>Clipy</string>
 	<key>CFBundleIconFile</key>
 	<string>AppIcon</string>
 	<key>CFBundleIdentifier</key>
-	<string>com.kkrishnan90.clipper</string>
+	<string>com.gokulakrishnxn.clipy</string>
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
 	<key>CFBundleName</key>
-	<string>Clipper</string>
+	<string>Clipy</string>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
@@ -29,7 +29,7 @@
 	<key>LSUIElement</key>
 	<true/>
 	<key>NSHumanReadableCopyright</key>
-	<string>Copyright © 2026 kkrishnan90. MIT License.</string>
+	<string>Copyright © 2026 Gokulakrishnan. Based on Clipper4Mac by kkrishnan90. MIT License.</string>
 	<key>NSPrincipalClass</key>
 	<string>NSApplication</string>
 	<key>NSSupportsAutomaticTermination</key>
