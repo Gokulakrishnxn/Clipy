@@ -70,7 +70,8 @@ private struct GeneralTab: View {
 
 private struct AppearanceTab: View {
     @AppStorage(PrefKey.popupPosition) private var popupPosition = PopupPosition.cursor.rawValue
-    @AppStorage(PrefKey.menuIcon) private var menuIcon = MenuIcon.paperclip.rawValue
+    @AppStorage(PrefKey.menuIcon) private var menuIcon = MenuIcon.clip.rawValue
+    @AppStorage(PrefKey.animateMenuIcon) private var animateMenuIcon = true
     @AppStorage(PrefKey.showApplicationIcons) private var showAppIcons = false
     @AppStorage(PrefKey.showSearch) private var showSearch = true
     @AppStorage(PrefKey.showFooter) private var showFooter = true
@@ -86,9 +87,15 @@ private struct AppearanceTab: View {
                 }
                 Picker("Menu bar icon:", selection: $menuIcon) {
                     ForEach(MenuIcon.allCases) { icon in
-                        Label(icon.title, systemImage: icon.symbolName).tag(icon.rawValue)
+                        Label {
+                            Text(icon.title)
+                        } icon: {
+                            if let image = icon.image { Image(nsImage: image) }
+                        }
+                        .tag(icon.rawValue)
                     }
                 }
+                Toggle("Animate menu bar icon on copy & paste", isOn: $animateMenuIcon)
             }
             Section {
                 Toggle("Show search field", isOn: $showSearch)

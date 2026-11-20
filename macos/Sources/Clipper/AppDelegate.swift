@@ -13,6 +13,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private(set) lazy var model = HistoryModel(core: core, watcher: watcher)
 
     private var statusItem: NSStatusItem?
+    private var iconAnimator: StatusIconAnimator?
     private var panel: FloatingPanel<ContentView>?
     private var keyMonitor: Any?
     private var flagsMonitor: Any?
@@ -65,7 +66,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private func setupStatusItem() {
         let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         statusItem = item
+        iconAnimator = StatusIconAnimator(button: item.button)
         updateStatusIcon()
+        // Copy anywhere → the clip bounces.
+        core.onIngest = { [weak self] in self?.animateStatusIcon() }
         if let button = item.button {
             button.target = self
             button.action = #selector(statusItemClicked(_:))
@@ -75,11 +79,25 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func updateStatusIcon() {
-        let raw = UserDefaults.standard.string(forKey: PrefKey.menuIcon) ?? MenuIcon.paperclip.rawValue
-        let icon = MenuIcon(rawValue: raw) ?? .paperclip
-        let image = NSImage(systemSymbolName: icon.symbolName, accessibilityDescription: "Clipper")
-        image?.isTemplate = true
-        statusItem?.button?.image = image
+        let raw = UserDefaults.standard.string(forKey: PrefKey.menuIcon) ?? MenuIcon.clip.rawValue
+        let icon = MenuIcon(rawValue: raw) ?? .clip
+        if let style = icon.logoStyle {
+            iconAnimator?.setStyle(style)
+        } else if statusItem?.button?.image?.accessibilityDescription != icon.rawValue {
+            let image = icon.image
+            image?.accessibilityDescription = icon.rawValue
+            statusItem?.button?.image = image
+        }
+    }
+
+    /// Plays the logo's "clip!" animation (copy, paste, smart action).
+    func animateStatusIcon() {
+        let d = UserDefaults.standard
+        guard d.bool(forKey: PrefKey.animateMenuIcon),
+              let icon = MenuIcon(rawValue: d.string(forKey: PrefKey.menuIcon) ?? ""),
+              icon.logoStyle != nil
+        else { return }
+        iconAnimator?.play()
     }
 
     @objc private func statusItemClicked(_ sender: NSStatusBarButton) {

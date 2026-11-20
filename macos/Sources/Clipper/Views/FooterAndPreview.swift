@@ -2,62 +2,69 @@ import AppKit
 import ClipperCore
 import SwiftUI
 
-/// Footer rows exactly like Maccy's: Clear ⌥⌘⌫ (Clear all with ⇧ held),
-/// Preferences… ⌘, · About · Quit ⌘Q.
+/// Compact footer: item count on the left, icon buttons on the right.
+/// Shortcuts are unchanged: Clear ⌥⌘⌫ (Clear all ⇧⌥⌘⌫), Preferences ⌘,, Quit ⌘Q.
 struct FooterView: View {
     @Bindable var model: HistoryModel
 
     var body: some View {
-        VStack(spacing: 0) {
-            FooterRow(
-                title: model.shiftDown ? "Clear all" : "Clear",
-                shortcut: model.shiftDown ? "⇧⌥⌘⌫" : "⌥⌘⌫"
-            ) {
-                model.clear(all: model.shiftDown)
-            }
-            FooterRow(title: "Preferences…", shortcut: "⌘,") {
+        HStack(spacing: 2) {
+            Image(nsImage: ClipLogo.image(.mark))
+                .renderingMode(.template)
+                .foregroundStyle(.secondary)
+            Text(summary)
+                .font(.system(size: 11))
+                .foregroundStyle(.secondary)
+            Spacer()
+            FooterButton(
+                symbol: "trash",
+                help: model.shiftDown ? "Clear all, including pinned (⇧⌥⌘⌫)" : "Clear unpinned (⌥⌘⌫)",
+                tint: model.shiftDown ? .red : nil
+            ) { model.clear(all: model.shiftDown) }
+            FooterButton(symbol: "gearshape", help: "Preferences… (⌘,)") {
                 model.dismiss?()
                 AppDelegate.shared?.openPreferences()
             }
-            FooterRow(title: "About", shortcut: nil) {
+            FooterButton(symbol: "info.circle", help: "About") {
                 model.dismiss?()
                 AppDelegate.shared?.showAbout()
             }
-            FooterRow(title: "Quit", shortcut: "⌘Q") {
-                NSApp.terminate(nil)
-            }
+            FooterButton(symbol: "power", help: "Quit (⌘Q)") { NSApp.terminate(nil) }
         }
-        .padding(.vertical, 4)
+        .padding(.horizontal, 10)
+        .padding(.vertical, 5)
+    }
+
+    private var summary: String {
+        if model.shiftDown { return "⇧ Clear all mode" }
+        let n = model.items.count
+        let clips = "\(n) \(n == 1 ? "clip" : "clips")"
+        return model.category == .all ? clips : "\(clips) · \(model.category.title)"
     }
 }
 
-private struct FooterRow: View {
-    let title: String
-    let shortcut: String?
+private struct FooterButton: View {
+    let symbol: String
+    let help: String
+    var tint: Color? = nil
     let action: () -> Void
     @State private var hovering = false
 
     var body: some View {
-        HStack {
-            Text(title)
-            Spacer()
-            if let shortcut {
-                Text(shortcut)
-                    .foregroundStyle(hovering ? .white.opacity(0.85) : .secondary)
-            }
+        Button(action: action) {
+            Image(systemName: symbol)
+                .font(.system(size: 12))
+                .foregroundStyle(tint ?? (hovering ? .primary : .secondary))
+                .frame(width: 26, height: 22)
+                .background(
+                    RoundedRectangle(cornerRadius: 5, style: .continuous)
+                        .fill(hovering ? Color(nsColor: .quaternaryLabelColor).opacity(0.6) : .clear)
+                )
+                .contentShape(Rectangle())
         }
-        .font(.system(size: 13))
-        .foregroundStyle(hovering ? .white : .primary)
-        .padding(.horizontal, 10)
-        .frame(height: 22)
-        .background(
-            RoundedRectangle(cornerRadius: 5, style: .continuous)
-                .fill(hovering ? Color.accentColor : .clear)
-                .padding(.horizontal, 5)
-        )
-        .contentShape(Rectangle())
+        .buttonStyle(.plain)
         .onHover { hovering = $0 }
-        .onTapGesture(perform: action)
+        .help(help)
     }
 }
 
