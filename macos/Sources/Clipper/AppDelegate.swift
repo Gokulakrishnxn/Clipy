@@ -166,7 +166,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private func panelDidClose() {
         model.previewedId = nil
-        model.shiftDown = false
+        model.updateShift(false)
         if let panel {
             UserDefaults.standard.set(panel.frame.origin.x, forKey: PrefKey.lastX)
             UserDefaults.standard.set(panel.frame.origin.y, forKey: PrefKey.lastY)
@@ -201,7 +201,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
         flagsMonitor = NSEvent.addLocalMonitorForEvents(matching: .flagsChanged) { [weak self] event in
             guard let self, let panel = self.panel, panel.isPresented else { return event }
-            self.model.shiftDown = event.modifierFlags.contains(.shift)
+            self.model.updateShift(event.modifierFlags.contains(.shift))
             return event
         }
     }

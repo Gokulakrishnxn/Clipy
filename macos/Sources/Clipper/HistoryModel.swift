@@ -66,8 +66,31 @@ final class HistoryModel {
     var previewedId: UInt64?
     /// Set by the panel controller so actions can close the popup.
     var dismiss: (() -> Void)?
-    /// Set while the ⇧ key is down (footer shows "Clear all").
-    var shiftDown = false
+    /// Set while the ⇧ key is down (footer's trash then clears pinned too).
+    private(set) var shiftDown = false
+    @ObservationIgnored private var shiftTimer: Timer?
+
+    /// Called from the flags monitor. Because the key-up can be missed (e.g.
+    /// when the popup was opened with ⇧⌘V), while ⇧ is reported down we
+    /// re-check the real keyboard state and clear it once released.
+    func updateShift(_ down: Bool) {
+        shiftDown = down && NSEvent.modifierFlags.contains(.shift)
+        shiftTimer?.invalidate()
+        shiftTimer = nil
+        guard shiftDown else { return }
+        let t = Timer(timeInterval: 0.2, repeats: true) { [weak self] timer in
+            MainActor.assumeIsolated {
+                guard let self else { timer.invalidate(); return }
+                if !NSEvent.modifierFlags.contains(.shift) {
+                    self.shiftDown = false
+                    timer.invalidate()
+                    self.shiftTimer = nil
+                }
+            }
+        }
+        RunLoop.main.add(t, forMode: .common)
+        shiftTimer = t
+    }
 
     /// Active tab; remembered across launches.
     var category: HistoryCategory = HistoryCategory(
