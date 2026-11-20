@@ -2,7 +2,8 @@ import AppKit
 import ClipperCore
 import SwiftUI
 
-/// The popup's content: vibrancy background → search → list → footer.
+/// The popup's content: vibrancy → search → category tabs → list →
+/// smart-action bar → footer.
 struct ContentView: View {
     @Bindable var model: HistoryModel
     @AppStorage(PrefKey.showSearch) private var showSearch = true
@@ -10,13 +11,18 @@ struct ContentView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            if showSearch {
-                SearchFieldView(text: $model.query)
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 8)
-                Divider()
+            VStack(spacing: 8) {
+                if showSearch {
+                    SearchFieldView(text: $model.query)
+                }
+                CategoryBar(model: model)
             }
+            .padding(.horizontal, 10)
+            .padding(.top, 10)
+            .padding(.bottom, 8)
+            Divider()
             HistoryListView(model: model)
+            SmartActionBar(model: model)
             if showFooter {
                 Divider()
                 FooterView(model: model)
@@ -26,6 +32,55 @@ struct ContentView: View {
         .onChange(of: model.core.revision) { _, _ in model.reloadIfStale() }
         .onChange(of: model.query) { _, _ in model.queryChanged() }
         .ignoresSafeArea()
+    }
+}
+
+/// All · Text · Images · Links · Files, with live counts. Tab / ⇧Tab cycle.
+struct CategoryBar: View {
+    @Bindable var model: HistoryModel
+    @Namespace private var pill
+
+    var body: some View {
+        HStack(spacing: 2) {
+            ForEach(HistoryCategory.allCases) { cat in
+                let active = model.category == cat
+                let count = model.counts[cat] ?? 0
+                Button {
+                    withAnimation(.snappy(duration: 0.2)) { model.category = cat }
+                } label: {
+                    HStack(spacing: 4) {
+                        Image(systemName: cat.symbol).font(.system(size: 10, weight: .semibold))
+                        Text(cat.title).font(.system(size: 11.5, weight: active ? .semibold : .regular))
+                        if count > 0 {
+                            Text("\(count)")
+                                .font(.system(size: 10, weight: .medium, design: .rounded))
+                                .monospacedDigit()
+                                .foregroundStyle(active ? Color.primary.opacity(0.7) : Color.secondary.opacity(0.8))
+                        }
+                    }
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .frame(maxWidth: .infinity)
+                    .background {
+                        if active {
+                            RoundedRectangle(cornerRadius: 6, style: .continuous)
+                                .fill(Color(nsColor: .controlBackgroundColor).opacity(0.9))
+                                .shadow(color: .black.opacity(0.12), radius: 1, y: 0.5)
+                                .matchedGeometryEffect(id: "pill", in: pill)
+                        }
+                    }
+                    .foregroundStyle(active ? Color.primary : (count == 0 ? Color.secondary.opacity(0.6) : Color.secondary))
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .help("\(cat.title) (Tab / ⇧Tab to switch)")
+            }
+        }
+        .padding(2)
+        .background(
+            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                .fill(Color(nsColor: .quaternaryLabelColor).opacity(0.35))
+        )
     }
 }
 
@@ -91,26 +146,16 @@ struct HistoryListView: View {
     var body: some View {
         ScrollViewReader { proxy in
             ScrollView {
-                LazyVStack(spacing: 0) {
-                    if let pinnedEnd = model.items.lastIndex(where: \.pinned) {
-                        ForEach(Array(model.items.enumerated()), id: \.element.id) { index, item in
-                            row(item, index: index)
-                            if index == pinnedEnd { Divider().padding(.horizontal, 10) }
-                        }
-                    } else {
-                        ForEach(Array(model.items.enumerated()), id: \.element.id) { index, item in
-                            row(item, index: index)
-                        }
+                LazyVStack(spacing: 1) {
+                    let pinnedEnd = model.items.lastIndex(where: \.pinned)
+                    ForEach(Array(model.items.enumerated()), id: \.element.id) { index, item in
+                        if index == 0, pinnedEnd != nil { SectionLabel(title: "Pinned", symbol: "pin.fill") }
+                        if let pinnedEnd, index == pinnedEnd + 1 { SectionLabel(title: "Recent", symbol: "clock") }
+                        row(item, index: index)
                     }
-                    if model.items.isEmpty {
-                        Text(model.query.isEmpty ? "No clipboard history yet" : "No matches")
-                            .foregroundStyle(.secondary)
-                            .font(.system(size: 13))
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 24)
-                    }
+                    if model.items.isEmpty { EmptyStateView(model: model) }
                 }
-                .padding(.vertical, 4)
+                .padding(.vertical, 5)
             }
             .onChange(of: model.selectedId) { _, id in
                 if let id { proxy.scrollTo(id, anchor: nil) }
@@ -120,11 +165,13 @@ struct HistoryListView: View {
 
     @ViewBuilder
     private func row(_ item: ItemSummary, index: Int) -> some View {
+        let smart = model.smart(for: item)
         HistoryRow(
             item: item,
             ordinal: index < 9 ? index + 1 : nil,
             selected: item.id == model.selectedId,
-            thumbnail: item.hasThumbnail ? model.core.thumbnail(item.id) : nil
+            thumbnail: item.hasThumbnail ? model.core.thumbnail(item.id) : nil,
+            badge: smart.badge
         )
         .id(item.id)
         .contentShape(Rectangle())
@@ -144,6 +191,17 @@ struct HistoryListView: View {
             Button("Paste") { model.activate(item.id) }
             Button("Paste as Plain Text") { model.activate(item.id, modifiers: .option) }
             Button("Copy Only") { model.activate(item.id, modifiers: .shift) }
+            if !smart.actions.isEmpty {
+                Menu("Smart Actions") {
+                    ForEach(smart.actions) { action in
+                        Button {
+                            model.perform(action, on: item.id)
+                        } label: {
+                            Label(action.title, systemImage: action.symbol)
+                        }
+                    }
+                }
+            }
             Divider()
             Button(item.pinned ? "Unpin" : "Pin") { model.togglePin(item.id) }
             Button("Delete", role: .destructive) { model.delete(item.id) }
@@ -168,49 +226,116 @@ struct HistoryListView: View {
     }
 }
 
-/// One 22-pt row: icon/thumbnail/swatch · title · ⌘n hint.
+private struct SectionLabel: View {
+    let title: String
+    let symbol: String
+
+    var body: some View {
+        HStack(spacing: 4) {
+            Image(systemName: symbol).font(.system(size: 8, weight: .bold))
+            Text(title.uppercased()).font(.system(size: 10, weight: .semibold)).kerning(0.6)
+            Spacer()
+        }
+        .foregroundStyle(.tertiary)
+        .padding(.horizontal, 15)
+        .padding(.top, 6)
+        .padding(.bottom, 2)
+    }
+}
+
+private struct EmptyStateView: View {
+    let model: HistoryModel
+
+    var body: some View {
+        VStack(spacing: 8) {
+            Image(nsImage: ClipLogo.image(.mark))
+                .renderingMode(.template)
+                .resizable()
+                .frame(width: 34, height: 34)
+                .foregroundStyle(.tertiary)
+            Text(message).font(.system(size: 13, weight: .medium)).foregroundStyle(.secondary)
+            Text(hint).font(.system(size: 11)).foregroundStyle(.tertiary)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 36)
+    }
+
+    private var message: String {
+        if !model.query.isEmpty { return "No matches" }
+        switch model.category {
+        case .all: return "No clipboard history yet"
+        case .text: return "No text clips"
+        case .images: return "No images"
+        case .links: return "No links"
+        case .files: return "No files"
+        }
+    }
+
+    private var hint: String {
+        model.query.isEmpty ? "Copy something and it shows up here." : "Try another tab with Tab ⇥"
+    }
+}
+
+/// One row: kind tile · title · smart badge · age · ⌘n hint.
 struct HistoryRow: View {
     let item: ItemSummary
     let ordinal: Int?
     let selected: Bool
     let thumbnail: NSImage?
+    let badge: SmartBadge?
     @AppStorage(PrefKey.showApplicationIcons) private var showAppIcons = false
     @AppStorage(PrefKey.imageMaxHeight) private var imageMaxHeight = 40
 
     var body: some View {
         HStack(spacing: 8) {
-            if showAppIcons, let bundle = item.source?.bundleId,
-               let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundle) {
-                Image(nsImage: NSWorkspace.shared.icon(forFile: url.path))
-                    .resizable()
-                    .frame(width: 16, height: 16)
-            }
             leading
-            Text(item.title)
-                .lineLimit(1)
-                .truncationMode(.tail)
-                .font(.system(size: 13))
+            titleView
             Spacer(minLength: 4)
+            if let badge { BadgeView(badge: badge, selected: selected) }
             if item.pinned {
                 Image(systemName: "pin.fill")
                     .font(.system(size: 9))
                     .foregroundStyle(selected ? .white.opacity(0.85) : .secondary)
             }
+            Text(Self.age(item.lastCopiedAt))
+                .font(.system(size: 10.5))
+                .monospacedDigit()
+                .foregroundStyle(selected ? .white.opacity(0.7) : Color.secondary.opacity(0.8))
             if let ordinal {
                 Text("⌘\(ordinal)")
                     .font(.system(size: 11, design: .rounded))
                     .foregroundStyle(selected ? .white.opacity(0.85) : .secondary)
+                    .frame(minWidth: 22, alignment: .trailing)
             }
         }
         .foregroundStyle(selected ? .white : .primary)
         .padding(.horizontal, 10)
-        .frame(minHeight: 22)
+        .frame(minHeight: 30)
         .padding(.vertical, item.kind == .image ? 3 : 0)
         .background(
-            RoundedRectangle(cornerRadius: 5, style: .continuous)
+            RoundedRectangle(cornerRadius: 7, style: .continuous)
                 .fill(selected ? Color.accentColor : .clear)
                 .padding(.horizontal, 5)
         )
+        .animation(.easeOut(duration: 0.08), value: selected)
+    }
+
+    @ViewBuilder
+    private var titleView: some View {
+        if item.kind == .link, let parts = SmartDetector.linkParts(item.title) {
+            HStack(spacing: 0) {
+                Text(parts.host).fontWeight(.medium)
+                Text(parts.rest).foregroundStyle(selected ? .white.opacity(0.75) : .secondary)
+            }
+            .lineLimit(1)
+            .truncationMode(.tail)
+            .font(.system(size: 13))
+        } else {
+            Text(item.title)
+                .lineLimit(1)
+                .truncationMode(.tail)
+                .font(.system(size: 13))
+        }
     }
 
     @ViewBuilder
@@ -221,33 +346,194 @@ struct HistoryRow: View {
                 Image(nsImage: thumbnail)
                     .resizable()
                     .aspectRatio(contentMode: .fit)
-                    .frame(maxHeight: CGFloat(imageMaxHeight))
-                    .clipShape(RoundedRectangle(cornerRadius: 3))
+                    .frame(maxWidth: 80, maxHeight: CGFloat(imageMaxHeight))
+                    .clipShape(RoundedRectangle(cornerRadius: 4))
+                    .overlay(RoundedRectangle(cornerRadius: 4).stroke(.quaternary))
             } else {
-                Image(systemName: "photo").foregroundStyle(.secondary)
+                KindTile(symbol: "photo", tint: .purple, selected: selected)
             }
         case .color:
-            RoundedRectangle(cornerRadius: 3)
+            RoundedRectangle(cornerRadius: 5)
                 .fill(Color(nsColor: NSColor(hex: item.color ?? "") ?? .gray))
-                .frame(width: 14, height: 14)
-                .overlay(RoundedRectangle(cornerRadius: 3).stroke(.quaternary))
+                .frame(width: 20, height: 20)
+                .overlay(RoundedRectangle(cornerRadius: 5).stroke(.quaternary))
         case .files:
             if let thumbnail {
                 Image(nsImage: thumbnail)
                     .resizable()
                     .aspectRatio(contentMode: .fit)
-                    .frame(height: 18)
-                    .clipShape(RoundedRectangle(cornerRadius: 3))
+                    .frame(width: 20, height: 20)
+                    .clipShape(RoundedRectangle(cornerRadius: 4))
             } else if let first = item.files.first {
                 Image(nsImage: NSWorkspace.shared.icon(forFile: first.path))
                     .resizable()
-                    .frame(width: 16, height: 16)
+                    .frame(width: 20, height: 20)
             }
         case .link:
-            Image(systemName: "link").font(.system(size: 11)).foregroundStyle(.secondary)
+            if showAppIcons, let icon = appIcon { icon } else {
+                KindTile(symbol: "link", tint: .blue, selected: selected)
+            }
         case .text:
-            EmptyView()
+            if showAppIcons, let icon = appIcon { icon } else {
+                KindTile(symbol: "text.alignleft", tint: .gray, selected: selected)
+            }
         }
+    }
+
+    private var appIcon: AnyView? {
+        guard let bundle = item.source?.bundleId,
+              let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundle) else { return nil }
+        return AnyView(Image(nsImage: NSWorkspace.shared.icon(forFile: url.path)).resizable().frame(width: 20, height: 20))
+    }
+
+    /// "now", "5m", "3h", "2d", "Mar 4".
+    static func age(_ ms: Int64) -> String {
+        let seconds = Date().timeIntervalSince1970 - Double(ms) / 1000
+        switch seconds {
+        case ..<60: return "now"
+        case ..<3600: return "\(Int(seconds / 60))m"
+        case ..<86400: return "\(Int(seconds / 3600))h"
+        case ..<(86400 * 7): return "\(Int(seconds / 86400))d"
+        default:
+            let f = DateFormatter()
+            f.setLocalizedDateFormatFromTemplate("MMMd")
+            return f.string(from: Date(timeIntervalSince1970: Double(ms) / 1000))
+        }
+    }
+}
+
+/// Small tinted square holding the kind's SF Symbol.
+private struct KindTile: View {
+    let symbol: String
+    let tint: Color
+    let selected: Bool
+
+    var body: some View {
+        RoundedRectangle(cornerRadius: 5, style: .continuous)
+            .fill(selected ? Color.white.opacity(0.2) : tint.opacity(0.15))
+            .frame(width: 20, height: 20)
+            .overlay(
+                Image(systemName: symbol)
+                    .font(.system(size: 10, weight: .semibold))
+                    .foregroundStyle(selected ? Color.white : tint)
+            )
+    }
+}
+
+/// Capsule label from the smart detector ("JSON", "= 42", "Token", …).
+struct BadgeView: View {
+    let badge: SmartBadge
+    let selected: Bool
+
+    var body: some View {
+        HStack(spacing: 3) {
+            if let symbol = badge.symbol {
+                Image(systemName: symbol).font(.system(size: 8, weight: .bold))
+            }
+            Text(badge.text).font(.system(size: 10, weight: .semibold)).lineLimit(1)
+        }
+        .padding(.horizontal, 6)
+        .padding(.vertical, 2)
+        .foregroundStyle(selected ? Color.white : tint)
+        .background(Capsule().fill(selected ? Color.white.opacity(0.22) : tint.opacity(0.14)))
+        .fixedSize()
+    }
+
+    private var tint: Color {
+        switch badge.tone {
+        case .neutral: .secondary
+        case .info: .blue
+        case .success: .green
+        case .warning: .orange
+        case .danger: .red
+        }
+    }
+}
+
+/// Offline assistant strip for the selected item: facts + one-key actions.
+struct SmartActionBar: View {
+    @Bindable var model: HistoryModel
+
+    var body: some View {
+        if let toast = model.toast {
+            bar {
+                Label(toast, systemImage: "checkmark.circle.fill")
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundStyle(.green)
+                Spacer()
+            }
+        } else if let item = model.selectedItem {
+            let smart = model.smart(for: item)
+            if !smart.actions.isEmpty || smart.stats != nil {
+                bar {
+                    VStack(alignment: .leading, spacing: 5) {
+                        HStack(spacing: 5) {
+                            Image(systemName: "sparkles").font(.system(size: 9, weight: .semibold))
+                            Text("Smart actions").font(.system(size: 10, weight: .semibold))
+                            if let stats = smart.stats {
+                                Text("· \(stats)").font(.system(size: 10)).lineLimit(1)
+                            }
+                            Spacer()
+                            Text("⌃1–\(min(9, smart.actions.count))")
+                                .font(.system(size: 10, design: .rounded))
+                                .opacity(smart.actions.isEmpty ? 0 : 1)
+                        }
+                        .foregroundStyle(.secondary)
+                        if !smart.actions.isEmpty {
+                            ScrollView(.horizontal, showsIndicators: false) {
+                                HStack(spacing: 5) {
+                                    ForEach(Array(smart.actions.prefix(9).enumerated()), id: \.element.id) { i, action in
+                                        ActionChip(action: action, index: i + 1) { model.perform(action) }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private func bar<C: View>(@ViewBuilder _ content: () -> C) -> some View {
+        VStack(spacing: 0) {
+            Divider()
+            HStack { content() }
+                .padding(.horizontal, 12)
+                .padding(.vertical, 7)
+        }
+        .background(Color(nsColor: .quaternaryLabelColor).opacity(0.12))
+    }
+}
+
+private struct ActionChip: View {
+    let action: SmartAction
+    let index: Int
+    let run: () -> Void
+    @State private var hovering = false
+
+    var body: some View {
+        Button(action: run) {
+            HStack(spacing: 4) {
+                Image(systemName: action.symbol).font(.system(size: 10, weight: .medium))
+                Text(action.title).font(.system(size: 11)).lineLimit(1)
+                Text("\(index)")
+                    .font(.system(size: 9, weight: .semibold, design: .rounded))
+                    .foregroundStyle(.secondary)
+                    .padding(.horizontal, 3)
+                    .background(RoundedRectangle(cornerRadius: 3).stroke(.tertiary, lineWidth: 0.5))
+            }
+            .padding(.horizontal, 7)
+            .padding(.vertical, 4)
+            .background(
+                RoundedRectangle(cornerRadius: 6, style: .continuous)
+                    .fill(hovering ? Color.accentColor.opacity(0.18) : Color(nsColor: .controlBackgroundColor).opacity(0.7))
+            )
+            .overlay(RoundedRectangle(cornerRadius: 6, style: .continuous).stroke(.quaternary, lineWidth: 0.5))
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .onHover { hovering = $0 }
+        .help("\(action.title) (⌃\(index))")
     }
 }
 
