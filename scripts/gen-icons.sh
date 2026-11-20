@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Rasterises assets/icon.svg into macos/Resources/AppIcon.icns.
-# Requires ImageMagick 7 (`brew install imagemagick`). Uses Apple's iconutil
+# Uses ImageMagick 7 when installed; otherwise renders with AppKit via
+# scripts/render_icon.swift (macOS 14+). Uses Apple's iconutil
 # when available (macOS) and falls back to scripts/make_icns.py elsewhere.
 set -euo pipefail
 cd "$(dirname "$0")/.."
@@ -8,13 +9,21 @@ cd "$(dirname "$0")/.."
 OUT=macos/Resources/AppIcon.icns
 mkdir -p macos/Resources
 
-if command -v magick >/dev/null 2>&1; then IM=magick; else IM=convert; fi
+if command -v magick >/dev/null 2>&1; then IM=magick
+elif command -v convert >/dev/null 2>&1; then IM=convert
+else IM=""; fi
+if [ -z "$IM" ]; then
+  # The SVG already draws the squircle with a transparent outside.
+  swiftc -O -o "${TMPDIR:-/tmp}/render_icon" scripts/render_icon.swift
+  render() { "${TMPDIR:-/tmp}/render_icon" assets/icon.svg "$1" "$2"; }
+else
 render() { # render <size> <out>  (clipped to the squircle mask)
   local m; m=$(mktemp).png
   "$IM" -background black -density 384 assets/icon-mask.svg -resize "$1x$1" -colorspace gray -depth 8 "$m"
   "$IM" -background none -density 384 assets/icon.svg -resize "$1x$1" "$m" -alpha off -compose CopyOpacity -composite -depth 8 -strip "$2"
   rm -f "$m"
 }
+fi
 
 tmp=$(mktemp -d)
 if command -v iconutil >/dev/null 2>&1; then
