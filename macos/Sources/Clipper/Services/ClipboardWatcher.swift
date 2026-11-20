@@ -94,7 +94,8 @@ final class ClipboardWatcher {
                 types.removeAll { $0 == msLink || $0 == msObject || $0 == .pdf }
             }
             for type in types {
-                guard let data = item.data(forType: type) else { continue }
+                guard var data = item.data(forType: type) else { continue }
+                if type == .fileURL { data = Self.resolvingFileReference(data) }
                 flavors.append(Flavor(uti: type.rawValue, data: data))
             }
         }
@@ -111,6 +112,21 @@ final class ClipboardWatcher {
         let snapshot = Snapshot(flavors: flavors, source: sourceApp, concealed: concealed, transient: transient)
         log.debug("captured \(flavors.count) flavours from \(sourceApp?.name ?? "?")")
         core.ingest(snapshot)
+    }
+
+    /// Finder copies files as *file reference* URLs
+    /// (`file:///.file/id=6571367.4328241`), which only mean something to
+    /// this Mac's file system right now. Store the real path URL instead
+    /// (`file:///Users/me/Downloads/Report.pdf`) so the item gets its name,
+    /// icon and type, and still pastes after a reboot.
+    static func resolvingFileReference(_ data: Data) -> Data {
+        guard let string = String(data: data, encoding: .utf8)?
+                .trimmingCharacters(in: .whitespacesAndNewlines.union(.controlCharacters)),
+              string.hasPrefix("file:///.file/"),
+              let url = URL(string: string),
+              let path = (url as NSURL).filePathURL
+        else { return data }
+        return Data(path.absoluteString.utf8)
     }
 
     private func shouldIgnore(_ bundleId: String) -> Bool {
